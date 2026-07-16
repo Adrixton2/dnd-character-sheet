@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kael Velosombrío - Ficha RPG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#7c3aed">
+    
+    <!-- Fuentes de Google: Cinzel (Fantasía/Títulos) e Inter (Lectura) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <style>
+        body { 
+            margin: 0; 
+            overflow-x: hidden; 
+            /* Fondo estilo obsidiana oscura con ligero viñeteado */
+            background: radial-gradient(circle at center, #1f2937 0%, #0f172a 80%, #020617 100%);
+            background-attachment: fixed;
+            font-family: 'Inter', sans-serif;
+            color: #e2e8f0;
+        }
+
+        .font-fantasy { font-family: 'Cinzel', serif; }
+
+        /* Paneles estilo interfaz RPG */
+        .rpg-panel {
+            background: linear-gradient(145deg, rgba(31,41,55,0.9) 0%, rgba(17,24,39,0.95) 100%);
+            border: 1px solid #374151;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5), 0 4px 6px rgba(0,0,0,0.3);
+            border-radius: 8px;
+            backdrop-filter: blur(4px);
+        }
+
+        .rpg-panel-header {
+            background: linear-gradient(90deg, rgba(88,28,135,0.4) 0%, transparent 100%);
+            border-bottom: 1px solid rgba(139,92,246,0.3);
+            border-left: 2px solid #a855f7;
+        }
+
+        /* Animaciones suaves */
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-attack {
+            animation: fadeSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+        }
+        
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 15px rgba(234, 179, 8, 0.6); }
+            50% { box-shadow: 0 0 25px rgba(234, 179, 8, 1); }
+        }
+        .animate-pulse-glow { animation: pulseGlow 2s infinite; }
+
+        /* Barras de desplazamiento customizadas */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #8b5cf6; }
+        
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Eliminar flechas de inputs numéricos en todos los navegadores y arreglar padding */
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+            padding: 0; 
+        }
+
+        /* Estilo para las barras de salud de videojuegos */
+        .health-bar-container {
+            background-color: #111827;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
+            border: 1px solid #374151;
+            position: relative;
+            overflow: hidden;
+            border-radius: 9999px;
+            height: 24px; /* Barra un poco más gruesa para poder arrastrarla bien */
+            width: 100%;
+            cursor: pointer;
+            touch-action: none; /* Previene scroll en móviles al arrastrar */
+        }
+        
+        .glass-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 50%;
+            background: linear-gradient(180deg, rgba(255,255,255,0.2) 0%, transparent 100%);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .shadow-glow { box-shadow: 0 0 15px rgba(168, 85, 247, 0.4); }
+
+        .bottom-nav {
+            box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.38);
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        .bottom-nav-button { min-height: 56px; }
+        .bottom-nav-button svg { width: 20px; height: 20px; }
+
+        .tab-viewport { overscroll-behavior: contain; }
+        .tab-section { animation: fadeSlideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1); }
+        .tab-viewport[data-active-tab="combat"] [data-tab]:not([data-tab="combat"]),
+        .tab-viewport[data-active-tab="character"] [data-tab]:not([data-tab="character"]),
+        .tab-viewport[data-active-tab="grimoire"] [data-tab]:not([data-tab="grimoire"]),
+        .tab-viewport[data-active-tab="inventory"] [data-tab]:not([data-tab="inventory"]) { display: none; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        function useLocalStorage(key, initialValue) {
+            const [value, setValue] = useState(() => {
+                try {
+                    const item = window.localStorage.getItem(key);
+                    return item ? JSON.parse(item) : initialValue;
+                } catch (error) {
+                    return initialValue;
+                }
+            });
+            useEffect(() => {
+                try {
+                    window.localStorage.setItem(key, JSON.stringify(value));
+                } catch (error) {}
+            }, [key, value]);
+            return [value, setValue];
+        }
+
+        function KaelCharacterSheet() {
+            /* ================= ESTADOS ================= */
+            const [charInfo, setCharInfo] = useLocalStorage('kael_char_info', {
+                name: "Kael Velosombrío", race: "Shadar-kai", cls: "Pícaro (Soulknife)"
+            });
+            const [level, setLevel] = useLocalStorage('kael_level', "5"); 
+            const PROF_BONUS = Math.ceil((Number(level) || 1) / 4) + 1;
+
+            const [inspiration, setInspiration] = useLocalStorage('kael_inspiration', false);
+
+            const [hp, setHp] = useLocalStorage('kael_hp_v3', { current: "34", max: "34", temp: "0" });
+            const [hitDice, setHitDice] = useLocalStorage('kael_hit_dice_v2', { current: "5", type: "d8" });
+            
+            const [speed, setSpeed] = useLocalStorage('kael_speed', "30");
+            const [size, setSize] = useLocalStorage('kael_size', "Mediano");
+            const [initBonus, setInitBonus] = useLocalStorage('kael_init_bonus_v2', "0");
+            const [deathSaves, setDeathSaves] = useLocalStorage('kael_deathsaves', { successes: 0, failures: 0 });
+
+            const [stats, setStats] = useLocalStorage('kael_stats_v2', {
+                fue: "12", des: "20", con: "16", int: "12", sab: "15", car: "15"
+            });
+            const [savingThrows, setSavingThrows] = useLocalStorage('kael_saving_throws', ['des', 'int']);
+
+            const [proficiencies, setProficiencies] = useLocalStorage('kael_proficiencies', {
+                expertise: ['sigilo', 'percepcion'],
+                proficient: ['acrobacias', 'juego_de_manos', 'engano', 'persuasion']
+            });
+
+            const [resources, setResources] = useLocalStorage('kael_resources', [
+                { id: 'res_psi', name: 'Dados Psiónicos', current: 6, max: 6, type: 'd8' },
+                { id: 'res_luck', name: 'Suerte (Lucky)', current: 3, max: 3, type: '' },
+                { id: 'res_ki', name: 'Puntos de Ki', current: 0, max: 0, type: '' },
+                { id: 'res_sup', name: 'Dados de Superioridad', current: 0, max: 0, type: 'd8' }
+            ]);
+
+            const [currency, setCurrency] = useLocalStorage('kael_currency_v2', { po: "191", pp: "0", pc: "0" });
+
+            const [inventory, setInventory] = useLocalStorage('kael_inventory_v3', [
+                { id: 'i1', name: 'Antorchas', qty: 5, desc: 'Luz brillante a 20 pies, tenue a 20 más.' },
+                { id: 'i2', name: 'Cuerda de Cáñamo', qty: 1, desc: '50 pies de longitud.' },
+                { id: 'i3', name: 'Raciones', qty: 10, desc: 'Comida para 1 día.' },
+                { id: 'i5', name: 'Poción Azul', qty: 19, desc: 'Efecto desconocido/Mágico.' },
+                { id: 'i6', name: 'Poción de Vida', qty: 1, desc: 'Cura 2d4+2 PV.' }
+            ]);
+            
+            const [armors, setArmors] = useLocalStorage('kael_armors_v1', [
+                { id: 'arm_1', name: "Armadura de Cuero Tachonado", type: "light", ac: 12, stealthDis: false, equipped: true }
+            ]);
+            const [tools, setTools] = useLocalStorage('kael_tools_v1', [
+                { id: 'tool_1', name: "Herramientas de Ladrón", desc: "Permite abrir cerraduras y desarmar trampas si se tiene competencia." }
+            ]);
+            const [miscAc, setMiscAc] = useLocalStorage('kael_misc_ac', "0");
+
+            const [weapons, setWeapons] = useLocalStorage('kael_weapons_v3', [
+                { id: 'wp_soul', name: 'Cuchillas Psíquicas', attacks: [
+                    { name: "Cuchilla Principal", atk: "+8", dmg: "1d6 + 5 Psíquico", notes: "Sutil, arrojadiza (60'). Desaparece al impactar." },
+                    { name: "Cuchilla Secundaria", atk: "+8", dmg: "1d4 + 5 Psíquico", notes: "Acción bonus. Requiere mano libre." }
+                ]},
+                { id: 'wp_snk', name: 'Ataque Furtivo', attacks: [
+                    { name: "Daño Furtivo", atk: "Auto", dmg: "+3d6 Extra", notes: "1 vez/turno con Ventaja o aliado a 5 pies." }
+                ]}
+            ]);
+            const [selectedWeaponId, setSelectedWeaponId] = useState('wp_soul');
+            const [activeTab, setActiveTab] = useState("combat");
+            const tabScrollRef = useRef(null);
+            const tabScrollPositions = useRef({ combat: 0, character: 0, grimoire: 0, inventory: 0 });
+
+            const [traits, setTraits] = useLocalStorage('kael_traits', [
+                { title: "Esquiva Asombrosa (Uncanny Dodge)", desc: "Reacción para dividir daño a la mitad." },
+                { title: "Telepatía Psiónica", desc: "1 milla de distancia, dura 1d8 horas." },
+                { title: "Habilidad Agudizada", desc: "Suma 1d8 a pruebas de habilidad falladas." }
+            ]);
+
+            const [feats, setFeats] = useLocalStorage('kael_feats', [
+                { title: "Afortunado (Lucky)", desc: "Tienes 3 puntos de suerte. Puedes gastar uno para tirar un d20 adicional en ataques, pruebas o salvaciones." }
+            ]);
+
+            const [spells, setSpells] = useLocalStorage('kael_spells_v3', []);
+            const [spellLimits, setSpellLimits] = useLocalStorage('kael_spell_limits', { known: "", prepared: "" });
+            const [spellSlots, setSpellSlots] = useLocalStorage('kael_spell_slots', {
+                1: { current: 0, max: 0 }, 2: { current: 0, max: 0 }, 3: { current: 0, max: 0 },
+                4: { current: 0, max: 0 }, 5: { current: 0, max: 0 }, 6: { current: 0, max: 0 },
+                7: { current: 0, max: 0 }, 8: { current: 0, max: 0 }, 9: { current: 0, max: 0 }
+            });
+
+            const [sessionNotes, setSessionNotes] = useLocalStorage('kael_session_notes_v2', [
+                { id: 'note_' + Date.now(), date: new Date().toLocaleDateString(), text: "Comienza la aventura..." }
+            ]);
+
+            // ESTADOS PARA MODALES
+            const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, message: "", onConfirm: null, isAlert: false });
+            const [skillModal, setSkillModal] = useState({ isOpen: false, skillKey: null, skillName: "" });
+            const [addModal, setAddModal] = useState({ isOpen: false, type: null, data: {} }); 
+            const [notesModalOpen, setNotesModalOpen] = useState(false);
+
+            // Ref para la barra de vida táctil
+            const hpBarRef = useRef(null);
+            const [isDraggingHp, setIsDraggingHp] = useState(false);
+
+            useEffect(() => {
+                setTraits(prev => {
+                    if (!prev.some(t => t.title.includes("Trance"))) {
+                        return [...prev, 
+                            { title: "Visión en la Oscuridad", desc: "Luz tenue a 60 pies como brillante." },
+                            { title: "Trance Shadar-kai", desc: "Meditas 4 horas. Ganas 2 competencias." },
+                            { title: "Bendición Reina Cuervo", desc: "Bonus: TP 30 pies y resistencia a daño." }
+                        ];
+                    }
+                    return prev;
+                });
+            }, []);
+
+            const handleNumInput = (value) => value === "" ? "" : String(Number(value));
+
+            const selectTab = (tab) => {
+                if (tabScrollRef.current) tabScrollPositions.current[activeTab] = tabScrollRef.current.scrollTop;
+                setActiveTab(tab);
+                requestAnimationFrame(() => {
+                    if (tabScrollRef.current) tabScrollRef.current.scrollTop = tabScrollPositions.current[tab] || 0;
+                });
+            };
+
+            const getModNum = (scoreStr) => {
+                const score = Number(scoreStr) || 0;
+                return Math.floor((score - 10) / 2);
+            };
+            
+            const formatMod = (mod) => (mod >= 0 ? `+${mod}` : mod);
+            
+            const getPassivePerception = () => {
+                const isExp = proficiencies.expertise.includes('percepcion');
+                const isProf = proficiencies.proficient.includes('percepcion');
+                const baseMod = getModNum(stats.sab);
+                const totalMod = baseMod + (isExp ? PROF_BONUS * 2 : isProf ? PROF_BONUS : 0);
+                return 10 + totalMod;
+            };
+
+            const calculateAC = () => {
+                const equippedArmor = armors.find(a => a.equipped && a.type !== 'shield');
+                const equippedShield = armors.find(a => a.equipped && a.type === 'shield');
+                
+                let baseAc = 10;
+                let dexLimit = Infinity;
+                
+                if (equippedArmor) {
+                    baseAc = Number(equippedArmor.ac) || 0;
+                    if (equippedArmor.type === 'medium') dexLimit = 2;
+                    if (equippedArmor.type === 'heavy') dexLimit = 0;
+                }
+                
+                let dexMod = getModNum(stats.des);
+                dexMod = Math.min(dexMod, dexLimit);
+                
+                let shieldBonus = 0;
+                if (equippedShield) {
+                    shieldBonus = Number(equippedShield.ac) || 2;
+                }
+                
+                const misc = Number(miscAc) || 0;
+                return baseAc + dexMod + shieldBonus + misc;
+            };
+
+            const isStealthDisadvantaged = armors.some(a => a.equipped && a.stealthDis);
+
+            // Funciones de interacción rápida
+            const toggleSavingThrow = (statKey) => {
+                setSavingThrows(prev => prev.includes(statKey) ? prev.filter(s => s !== statKey) : [...prev, statKey]);
+            };
+
+            const toggleArmorEquip = (id) => {
+                setArmors(prev => prev.map(a => {
+                    if (a.id === id) {
+                        const targetArmor = armors.find(arm => arm.id === id);
+                        if (!targetArmor.equipped && targetArmor.type !== 'shield') {
+                            return { ...a, equipped: true };
+                        }
+                        return { ...a, equipped: !a.equipped };
+                    }
+                    if (armors.find(arm => arm.id === id && !arm.equipped && arm.type !== 'shield')) {
+                         if (a.type !== 'shield') return { ...a, equipped: false };
+                    }
+                    return a;
+                }));
+            };
+
+            const updateSkillProficiency = (level) => {
+                const { skillKey } = skillModal;
+                setProficiencies(prev => {
+                    const newExp = prev.expertise.filter(k => k !== skillKey);
+                    const newProf = prev.proficient.filter(k => k !== skillKey);
+                    if (level === 'expertise') newExp.push(skillKey);
+                    if (level === 'proficient') newProf.push(skillKey);
+                    return { expertise: newExp, proficient: newProf };
+                });
+                setSkillModal({ isOpen: false, skillKey: null, skillName: "" });
+            };
+
+            const confirmDelete = (message, action) => setConfirmDialog({ isOpen: true, message, onConfirm: action, isAlert: false });
+            const showAlert = (message) => setConfirmDialog({ isOpen: true, message, onConfirm: null, isAlert: true });
+            const closeConfirm = () => setConfirmDialog({ isOpen: false, message: "", onConfirm: null, isAlert: false });
+
+            const addCurrency = (type, amount) => {
+                setCurrency(prev => {
+                    let po = Number(prev.po) || 0;
+                    let pp = Number(prev.pp) || 0;
+                    let pc = Number(prev.pc) || 0;
+                    if (type === 'pc') pc += amount;
+                    if (type === 'pp') pp += amount;
+                    if (type === 'po') po += amount;
+                    while (pc >= 10) { pc -= 10; pp += 1; }
+                    while (pp >= 10) { pp -= 10; po += 1; }
+                    while (pc < 0 && pp > 0) { pp -= 1; pc += 10; }
+                    while (pp < 0 && po > 0) { po -= 1; pp += 10; }
+                    if (pc < 0) pc = 0; if (pp < 0) pp = 0; if (po < 0) po = 0;
+                    return { po: String(po), pp: String(pp), pc: String(pc) };
+                });
+            };
+
+            const adjustInvQty = (id, delta) => {
+                setInventory(prev => prev.map(item => {
+                    if (item.id === id) {
+                        return { ...item, qty: Math.max(0, (Number(item.qty)||0) + delta) };
+                    }
+                    return item;
+                }));
+            };
+
+            const adjustSpellSlot = (lvl, delta) => {
+                setSpellSlots(prev => {
+                    const current = Number(prev[lvl].current) || 0;
+                    const max = Number(prev[lvl].max) || 0;
+                    const newCurrent = Math.max(0, Math.min(max, current + delta));
+                    return { ...prev, [lvl]: { ...prev[lvl], current: newCurrent } };
+                });
+            };
+
+            const updateHpFromEvent = (e) => {
+                if (!hpBarRef.current) return;
+                const rect = hpBarRef.current.getBoundingClientRect();
+                const clientX = e.clientX;
+                let percentage = (clientX - rect.left) / rect.width;
+                percentage = Math.max(0, Math.min(1, percentage));
+                const newHp = Math.round((Number(hp.max) || 1) * percentage);
+                setHp(p => ({ ...p, current: String(newHp) }));
+            };
+
+            const handleHpPointerDown = (e) => {
+                setIsDraggingHp(true);
+                e.target.setPointerCapture(e.pointerId);
+                updateHpFromEvent(e);
+            };
+
+            const handleHpPointerMove = (e) => {
+                if (isDraggingHp) {
+                    updateHpFromEvent(e);
+                }
+            };
+
+            const handleHpPointerUp = (e) => {
+                setIsDraggingHp(false);
+                e.target.releasePointerCapture(e.pointerId);
+            };
+
+            const handleAddSubmit = () => {
+                const { type, data } = addModal;
+                if (type === 'item' && data.name) setInventory([...inventory, { id: 'inv_' + Date.now(), name: data.name, qty: Number(data.qty) || 1, desc: data.desc || "" }]);
+                if (type === 'armor' && data.name) setArmors([...armors, { id: 'arm_' + Date.now(), name: data.name, type: data.type || 'light', ac: Number(data.ac) || 11, stealthDis: data.stealthDis || false, equipped: false }]);
+                if (type === 'tool' && data.name) setTools([...tools, { id: 'tool_' + Date.now(), name: data.name, desc: data.desc || "" }]);
+                if (type === 'trait' && data.title) setTraits([...traits, { title: data.title, desc: data.desc }]);
+                if (type === 'feat' && data.title) setFeats([...feats, { title: data.title, desc: data.desc }]);
+                if (type === 'weapon' && data.name) {
+                    const newWp = { id: 'wp_' + Date.now(), name: data.name, attacks: [] };
+                    setWeapons([...weapons, newWp]);
+                    setSelectedWeaponId(newWp.id);
+                }
+                if (type === 'attack' && data.name && selectedWeaponId) {
+                    setWeapons(weapons.map(w => w.id === selectedWeaponId ? 
+                        { ...w, attacks: [...w.attacks, { name: data.name, atk: data.atk, dmg: data.dmg, notes: data.notes }] } : w
+                    ));
+                }
+                if (type === 'resource' && data.name) {
+                    setResources([...resources, { id: 'res_' + Date.now(), name: data.name, current: Number(data.max)||0, max: Number(data.max)||0, type: data.dice || '' }]);
+                }
+                if (type === 'spell' && data.name) {
+                    setSpells([...spells, { 
+                        id: 'sp_' + Date.now(), name: data.name, level: Number(data.level)||1, range: data.range || '-', shape: data.shape || '-', size: data.size || '-',
+                        compV: data.compV || false, compS: data.compS || false, compM: data.compM || false, compMDesc: data.compMDesc || '',
+                        prepared: false, notes: data.notes 
+                    }]);
+                }
+                setAddModal({ isOpen: false, type: null, data: {} });
+            };
+
+            const toggleSpellPreparation = (sp) => {
+                if (!sp.prepared) {
+                    const maxPrep = Number(spellLimits.prepared) || 0;
+                    const currentPrep = spells.filter(s => s.prepared).length;
+                    if (maxPrep > 0 && currentPrep >= maxPrep) {
+                        showAlert(`Has alcanzado tu límite máximo de ${maxPrep} hechizos preparados.`);
+                        return;
+                    }
+                }
+                setSpells(spells.map(s => s.id === sp.id ? {...s, prepared: !s.prepared} : s));
+            };
+
+            // Cálculos para la barra de vida de videojuego
+            const curHp = Number(hp.current) || 0;
+            const maxHp = Number(hp.max) || 1;
+            const tmpHp = Number(hp.temp) || 0;
+            
+            const hpPercent = Math.min(100, Math.max(0, (curHp / maxHp) * 100));
+            const tempHpPercent = Math.min(100, Math.max(0, (tmpHp / maxHp) * 100));
+
+            const SKILLS = [
+                { key: 'acrobacias', name: 'Acrobacias', stat: 'des' }, { key: 'arcanos', name: 'Arcano', stat: 'int' },
+                { key: 'atletismo', name: 'Atletismo', stat: 'fue' }, { key: 'engano', name: 'Engaño', stat: 'car' },
+                { key: 'historia', name: 'Historia', stat: 'int' }, { key: 'interpretacion', name: 'Interpretación', stat: 'car' },
+                { key: 'intimidacion', name: 'Intimidación', stat: 'car' }, { key: 'investigacion', name: 'Investigación', stat: 'int' },
+                { key: 'juego_de_manos', name: 'Juego de Manos', stat: 'des' }, { key: 'medicina', name: 'Medicina', stat: 'sab' },
+                { key: 'naturaleza', name: 'Naturaleza', stat: 'int' }, { key: 'percepcion', name: 'Percepción', stat: 'sab' },
+                { key: 'perspicacia', name: 'Perspicacia', stat: 'sab' }, { key: 'persuasion', name: 'Persuasión', stat: 'car' },
+                { key: 'religion', name: 'Religión', stat: 'int' }, { key: 'sigilo', name: 'Sigilo', stat: 'des' },
+                { key: 'supervivencia', name: 'Supervivencia', stat: 'sab' }, { key: 'trato_con_animales', name: 'Trato con Animales', stat: 'sab' },
+            ];
+
+            return (
+                <div className="h-[100dvh] overflow-hidden p-2 pb-20 md:p-6 md:pb-24 text-gray-200">
+                    <div className="max-w-5xl h-full mx-auto flex flex-col gap-4">
+                        
+                        {/* HEADER FANTASÍA */}
+                        <div className="rpg-panel p-4 flex flex-col md:flex-row justify-between items-center gap-4 relative overflow-hidden">
+                            <div className="glass-overlay"></div>
+                            <div className="flex-1 w-full z-10">
+                                <input type="text" value={charInfo.name} onChange={e => setCharInfo({...charInfo, name: e.target.value})} className="font-fantasy text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-gray-100 to-gray-400 tracking-wider bg-transparent border-b border-transparent hover:border-gray-600 focus:border-purple-500 outline-none w-full max-w-[400px] transition-colors" />
+                                <div className="flex items-center flex-wrap text-purple-400 font-medium text-sm md:text-base mt-2 font-fantasy tracking-widest gap-2">
+                                    <input type="text" value={charInfo.race} onChange={e => setCharInfo({...charInfo, race: e.target.value})} className="bg-transparent w-28 border-b border-transparent hover:border-purple-500 outline-none uppercase" />
+                                    <span className="text-gray-500">|</span>
+                                    <input type="text" value={charInfo.cls} onChange={e => setCharInfo({...charInfo, cls: e.target.value})} className="bg-transparent w-44 border-b border-transparent hover:border-purple-500 outline-none uppercase" />
+                                    <span className="text-gray-500">|</span>
+                                    <span className="uppercase flex items-center">
+                                        Nvl <input type="number" value={level} onChange={(e) => setLevel(handleNumInput(e.target.value))} className="w-10 mx-1 bg-transparent border-b border-purple-500 text-center outline-none text-white focus:bg-gray-800 rounded font-sans" />
+                                    </span>
+                                    <span className="bg-purple-900/40 border border-purple-500 text-fuchsia-300 px-2 py-0.5 rounded-full text-xs font-bold font-sans shadow-inner whitespace-nowrap">
+                                        Bono Comp. +{PROF_BONUS}
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            {/* MONEDA DE INSPIRACIÓN EN LA ESQUINA DERECHA */}
+                            <div className="z-10 flex flex-col items-center justify-center">
+                                <button onClick={() => setInspiration(!inspiration)} className={`w-14 h-14 rounded-full transition-all duration-500 flex items-center justify-center border-2 ${inspiration ? 'bg-gradient-to-br from-yellow-300 to-yellow-600 border-yellow-200 animate-pulse-glow text-yellow-900 scale-110' : 'bg-gray-800 border-gray-600 text-gray-500 hover:border-yellow-600 hover:text-yellow-500'}`} title="Inspiración">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="currentColor" viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279-7.416-3.967-7.417 3.967 1.481-8.279-6.064-5.828 8.332-1.151z"/></svg>
+                                </button>
+                                <span className={`text-[10px] font-fantasy font-bold uppercase mt-2 tracking-widest ${inspiration ? 'text-yellow-400' : 'text-gray-500'}`}>Inspiración</span>
+                            </div>
+                        </div>
+
+                        <main ref={tabScrollRef} data-active-tab={activeTab} onScroll={() => { if (tabScrollRef.current) tabScrollPositions.current[activeTab] = tabScrollRef.current.scrollTop; }} className="tab-viewport flex-1 min-h-0 overflow-y-auto pr-1 pb-4 space-y-6">
+                        <div data-tab="combat" className="tab-section space-y-6">
+                        {/* TOP BAR: STATS PRINCIPALES (BARRA DE VIDA, CA, ETC) */}
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
+                            
+                            {/* BLOQUE DE VIDA ESTILO VIDEOJUEGO (Ocupa 2 columnas) */}
+                            <div className="col-span-2 rpg-panel p-3 flex flex-col justify-center relative overflow-hidden">
+                                <div className="flex justify-between items-end mb-1 z-10">
+                                    <span className="font-fantasy text-red-400 text-[10px] md:text-sm font-bold uppercase tracking-widest">Salud</span>
+                                    <div className="flex items-center space-x-1 font-sans">
+                                        <input type="number" value={hp.current} onChange={e => setHp(p => ({ ...p, current: handleNumInput(e.target.value) }))} className="w-12 bg-transparent text-right text-2xl font-bold text-white outline-none" />
+                                        <span className="text-gray-500 text-lg">/</span>
+                                        <input type="number" value={hp.max} onChange={e => setHp(p => ({ ...p, max: handleNumInput(e.target.value) }))} className="w-10 bg-transparent text-left text-lg text-gray-400 outline-none border-b border-transparent hover:border-gray-600 focus:border-red-500" />
+                                    </div>
+                                </div>
+                                
+                                {/* Controles rápidos +/- */}
+                                <div className="absolute top-2 left-2 flex space-x-1 z-10">
+                                    <button onClick={() => setHp(p => ({ ...p, current: String(Math.max(0, (Number(p.current)||0) - 1)) }))} className="w-6 h-6 rounded bg-gray-800/80 text-red-400 hover:bg-red-900/80 flex items-center justify-center font-bold border border-gray-600">-</button>
+                                    <button onClick={() => setHp(p => ({ ...p, current: String(Math.min(Number(p.max)||0, (Number(p.current)||0) + 1)) }))} className="w-6 h-6 rounded bg-gray-800/80 text-green-400 hover:bg-green-900/80 flex items-center justify-center font-bold border border-gray-600">+</button>
+                                </div>
+
+                                {/* Barra Visual Táctil (Draggable) */}
+                                <div 
+                                    className="health-bar-container mt-1"
+                                    ref={hpBarRef}
+                                    onPointerDown={handleHpPointerDown}
+                                    onPointerMove={handleHpPointerMove}
+                                    onPointerUp={handleHpPointerUp}
+                                    onPointerCancel={handleHpPointerUp}
+                                >
+                                    <div className="glass-overlay"></div>
+                                    <div className="absolute left-0 top-0 h-full bg-gradient-to-r from-red-800 to-red-500 transition-all duration-75" style={{ width: `${hpPercent}%` }}></div>
+                                    {tmpHp > 0 && (
+                                        <div className="absolute left-0 top-0 h-full bg-gradient-to-r from-cyan-600 to-cyan-300 opacity-80 transition-all duration-300 border-r border-white shadow-[0_0_8px_#22d3ee] pointer-events-none" style={{ width: `${tempHpPercent}%` }}></div>
+                                    )}
+                                </div>
+
+                                {/* Vida Temporal Input */}
+                                <div className="mt-2 flex items-center justify-between z-10">
+                                    <span className="font-fantasy text-cyan-400 text-[10px] font-bold tracking-widest uppercase">Escudo Temp.</span>
+                                    <div className="flex items-center bg-gray-900/80 rounded-full border border-cyan-800/50 px-2 py-0.5">
+                                        <button onClick={() => setHp(p => ({ ...p, temp: String(Math.max(0, (Number(p.temp)||0) - 1)) }))} className="text-gray-500 hover:text-cyan-400 px-1">-</button>
+                                        <input type="number" value={hp.temp || ""} placeholder="0" onChange={e => setHp(p => ({ ...p, temp: handleNumInput(e.target.value) }))} className="w-8 bg-transparent text-center text-sm font-bold text-cyan-300 outline-none" />
+                                        <button onClick={() => setHp(p => ({ ...p, temp: String((Number(p.temp)||0) + 1) }))} className="text-gray-500 hover:text-cyan-400 px-1">+</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {}
+                            {/* Dados de Golpe */}
+                            <div className="rpg-panel p-3 flex flex-col items-center justify-center">
+                                <span className="font-fantasy text-gray-400 text-[10px] md:text-xs font-bold uppercase tracking-widest mb-2 text-center">Dados Golpe</span>
+                                <div className="flex items-center space-x-2">
+                                    <button onClick={() => setHitDice(p => ({ ...p, current: String(Math.max(0, (Number(p.current)||0) - 1)) }))} className="w-6 h-6 rounded bg-gray-800 border border-gray-600 text-gray-400 hover:text-white hover:border-gray-400 flex items-center justify-center">-</button>
+                                    <div className="flex flex-col items-center">
+                                        <input type="number" value={hitDice.current} onChange={e => setHitDice(p => ({ ...p, current: handleNumInput(e.target.value) }))} className="w-10 bg-transparent text-center text-2xl font-bold text-white leading-none outline-none" />
+                                        <div className="text-gray-500 text-[10px] mt-1 flex items-center border-t border-gray-700 pt-1 w-full justify-center">
+                                            Max {Number(level)||0}
+                                            <input type="text" value={hitDice.type} onChange={e => setHitDice(p => ({...p, type: e.target.value}))} className="w-6 bg-transparent outline-none text-center text-purple-400 ml-1 font-bold" />
+                                        </div>
+                                    </div>
+                                    <button onClick={() => setHitDice(p => ({ ...p, current: String(Math.min(Number(level)||0, (Number(p.current)||0) + 1)) }))} className="w-6 h-6 rounded bg-gray-800 border border-gray-600 text-gray-400 hover:text-white hover:border-gray-400 flex items-center justify-center">+</button>
+                                </div>
+                            </div>
+
+                            {/* CA Calculada */}
+                            <div className="rpg-panel p-3 flex flex-col items-center justify-center relative group cursor-default">
+                                <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJyZ2JhKDE2OCwgODUsIDI0NywgMC4xNSkiIHN0cm9rZS13aWR0aD0iMiI+PHBhdGggZD0iTTEyIDIyczgtNCA4LTEwVjVsLTgtMy04IDN2N2MwIDYgOCAxMCA4IDEweiIvPjwvc3ZnPg==')] bg-center bg-no-repeat bg-contain opacity-50"></div>
+                                <span className="font-fantasy text-purple-400 text-[10px] md:text-xs font-bold uppercase tracking-widest mb-1 z-10 text-center">Armadura</span>
+                                <span className="text-4xl font-bold text-white z-10 drop-shadow-md">{calculateAC()}</span>
+                                <div className="absolute opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 text-gray-300 text-[10px] p-2 rounded-lg -bottom-10 whitespace-nowrap z-20 border border-gray-600 shadow-lg pointer-events-none">
+                                    Base + Des + Escudo + Misc
+                                </div>
+                            </div>
+
+                            {/* Iniciativa y Percepción (Columna apilada) */}
+                            <div className="flex flex-col gap-2">
+                                <div className="rpg-panel p-2 flex flex-col items-center justify-center relative flex-1">
+                                    <span className="font-fantasy text-yellow-500 text-[9px] font-bold uppercase tracking-widest mb-1">Iniciativa</span>
+                                    <span className="text-2xl font-bold text-white leading-none">{formatMod(getModNum(stats.des) + (Number(initBonus)||0))}</span>
+                                    <div className="flex items-center text-[9px] text-gray-500 mt-1">
+                                        Bono: <input type="number" value={initBonus} onChange={e => setInitBonus(handleNumInput(e.target.value))} className="w-6 bg-transparent border-b border-gray-700 text-center ml-1 outline-none focus:border-yellow-500" />
+                                    </div>
+                                </div>
+                                <div className="rpg-panel p-2 flex flex-col items-center justify-center flex-1">
+                                    <span className="font-fantasy text-blue-400 text-[9px] font-bold uppercase tracking-widest mb-1 text-center leading-tight">Percepción Pasiva</span>
+                                    <span className="text-xl font-bold text-white leading-none shadow-[0_0_10px_rgba(96,165,250,0.3)] rounded-full w-8 h-8 flex items-center justify-center bg-gray-800 mt-1">{getPassivePerception()}</span>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        </div>
+
+                        {/* Velocidad y Tamaño */}
+                        <div data-tab="character" className="tab-section flex gap-4 border-t border-b border-gray-800 py-2">
+                            <div className="flex items-center gap-2 text-sm text-gray-400">
+                                <span className="font-fantasy uppercase tracking-wider text-xs">Velocidad:</span>
+                                <input type="number" value={speed} onChange={e => setSpeed(handleNumInput(e.target.value))} className="w-10 bg-transparent text-center font-bold text-white border-b border-gray-700 outline-none focus:border-purple-500" /> ft
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-gray-400">
+                                <span className="font-fantasy uppercase tracking-wider text-xs">Tamaño:</span>
+                                <input type="text" value={size} onChange={e => setSize(e.target.value)} className="w-20 bg-transparent text-center font-bold text-white border-b border-gray-700 outline-none focus:border-purple-500" />
+                            </div>
+                        </div>
+
+                        {}
+                        {/* TIRADAS DE MUERTE */}
+                        <div data-tab="combat" className="tab-section">
+                        {((Number(hp.current)||0) <= 0) && (
+                            <div className="bg-gradient-to-r from-red-950 to-gray-900 border border-red-800 p-4 rounded-lg flex flex-col md:flex-row items-center justify-between shadow-[0_0_20px_rgba(220,38,38,0.4)] animate-attack relative overflow-hidden">
+                                <div className="absolute right-0 top-0 opacity-10 text-9xl pointer-events-none transform translate-x-4 -translate-y-8">☠️</div>
+                                <div className="text-red-400 font-fantasy font-bold uppercase tracking-widest flex items-center mb-3 md:mb-0 z-10 text-lg">
+                                    <span className="text-2xl mr-2">☠️</span> Lucha por tu alma
+                                </div>
+                                <div className="flex gap-8 z-10">
+                                    <div className="flex flex-col items-center">
+                                        <span className="text-green-400 text-[10px] font-bold tracking-widest uppercase mb-2">Éxitos</span>
+                                        <div className="flex gap-3">
+                                            {[1, 2, 3].map(num => (
+                                                <button key={`succ-${num}`} onClick={() => setDeathSaves(p => ({...p, successes: p.successes === num ? num - 1 : num}))} className={`w-8 h-8 rounded-full border-2 transition-all duration-300 ${deathSaves.successes >= num ? 'bg-green-500 border-green-300 shadow-[0_0_15px_rgba(74,222,128,0.8)]' : 'bg-gray-900 border-gray-700'}`}></button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col items-center">
+                                        <span className="text-red-500 text-[10px] font-bold tracking-widest uppercase mb-2">Fallos</span>
+                                        <div className="flex gap-3">
+                                            {[1, 2, 3].map(num => (
+                                                <button key={`fail-${num}`} onClick={() => setDeathSaves(p => ({...p, failures: p.failures === num ? num - 1 : num}))} className={`w-8 h-8 rounded-full border-2 transition-all duration-300 ${deathSaves.failures >= num ? 'bg-red-600 border-red-300 shadow-[0_0_15px_rgba(220,38,38,0.8)]' : 'bg-gray-900 border-gray-700'}`}></button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                                <button onClick={() => setDeathSaves({successes: 0, failures: 0})} className="z-10 mt-4 md:mt-0 px-4 py-2 bg-gray-800 border border-gray-600 rounded text-sm text-gray-300 hover:text-white hover:bg-gray-700 font-fantasy uppercase tracking-wider transition-colors">Estabilizar</button>
+                            </div>
+                        )}
+
+                        </div>
+
+                        <div className="space-y-6">
+                            
+                            {}
+                            {/* COLUMNA IZQ: ATRIBUTOS Y HABILIDADES */}
+                            <div data-tab="character" className="tab-section space-y-6">
+                                
+                                {/* ATRIBUTOS BASE */}
+                                <div className="rpg-panel p-4">
+                                    <h2 className="rpg-panel-header text-lg font-fantasy font-bold text-purple-300 mb-4 pb-2 px-2 tracking-widest uppercase">Atributos</h2>
+                                    <div className="space-y-2">
+                                        {Object.entries(stats).map(([key, val]) => {
+                                            const mod = getModNum(val);
+                                            return (
+                                                <div key={key} className="flex items-center justify-between bg-gray-900/60 p-2 rounded border border-gray-800">
+                                                    <span className="uppercase font-bold w-12 text-gray-400 text-sm font-fantasy tracking-wider">{key}</span>
+                                                    <input type="number" value={val} onChange={(e) => setStats({...stats, [key]: handleNumInput(e.target.value)})} className="w-12 text-center bg-gray-800 text-white rounded p-1 outline-none border border-transparent focus:border-purple-500 font-bold" />
+                                                    <span className="w-12 text-center text-lg font-bold text-white bg-gradient-to-br from-purple-900 to-gray-900 border border-purple-800/50 rounded py-0.5 shadow-inner">{formatMod(mod)}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* TIRADAS DE SALVACIÓN */}
+                                <div className="rpg-panel p-4">
+                                    <h2 className="rpg-panel-header text-lg font-fantasy font-bold text-purple-300 mb-3 pb-2 px-2 tracking-widest uppercase">Salvaciones</h2>
+                                    <div className="space-y-1">
+                                        {Object.entries(stats).map(([key, val]) => {
+                                            const isProf = savingThrows.includes(key);
+                                            const totalMod = getModNum(val) + (isProf ? PROF_BONUS : 0);
+                                            const statNames = { fue: 'Fuerza', des: 'Destreza', con: 'Constitución', int: 'Inteligencia', sab: 'Sabiduría', car: 'Carisma' };
+                                            return (
+                                                <div key={`save-${key}`} onClick={() => toggleSavingThrow(key)} className="flex items-center justify-between py-1.5 border-b border-gray-800 last:border-0 hover:bg-gray-800/50 px-2 rounded transition-colors cursor-pointer group">
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className={`w-3 h-3 rounded-sm rotate-45 border transition-all duration-300 ${isProf ? 'bg-purple-500 border-purple-300 shadow-[0_0_8px_rgba(168,85,247,0.8)]' : 'bg-transparent border-gray-600'}`}></div>
+                                                        <span className={`text-sm font-medium transition-colors ${isProf ? 'text-gray-100' : 'text-gray-500 group-hover:text-gray-300'}`}>{statNames[key]}</span>
+                                                    </div>
+                                                    <span className={`font-mono font-bold transition-colors ${isProf ? 'text-purple-400' : 'text-gray-600'}`}>{formatMod(totalMod)}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* HABILIDADES */}
+                                <div className="rpg-panel p-4">
+                                    <h2 className="rpg-panel-header text-lg font-fantasy font-bold text-purple-300 mb-3 pb-2 px-2 tracking-widest uppercase">Habilidades</h2>
+                                    <div className="space-y-1">
+                                        {SKILLS.map(skill => {
+                                            const isExp = proficiencies.expertise.includes(skill.key);
+                                            const isProf = proficiencies.proficient.includes(skill.key);
+                                            const totalMod = getModNum(stats[skill.stat]) + (isExp ? PROF_BONUS * 2 : isProf ? PROF_BONUS : 0);
+                                            
+                                            return (
+                                                <div key={skill.key} 
+                                                    onClick={() => setSkillModal({ isOpen: true, skillKey: skill.key, skillName: skill.name })}
+                                                    className="flex items-center justify-between py-1.5 border-b border-gray-800 last:border-0 hover:bg-gray-800/50 px-2 rounded transition-colors cursor-pointer group">
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className={`w-3 h-3 rounded-full border transition-all duration-300 ${isExp ? 'bg-fuchsia-500 border-fuchsia-300 shadow-[0_0_8px_rgba(217,70,239,0.8)]' : isProf ? 'bg-purple-600 border-purple-400 shadow-[0_0_5px_rgba(147,51,234,0.6)]' : 'bg-transparent border-gray-600'}`}></div>
+                                                        <span className={`text-[13px] font-medium transition-colors ${isExp || isProf ? 'text-gray-100' : 'text-gray-500 group-hover:text-gray-300'}`}>
+                                                            {skill.name} 
+                                                            <span className="text-[9px] text-gray-600 ml-1 uppercase">({skill.stat})</span>
+                                                            {skill.key === 'sigilo' && isStealthDisadvantaged && <span className="ml-2 text-red-500 font-bold" title="Desventaja por Armadura Equipada">⚠️</span>}
+                                                        </span>
+                                                    </div>
+                                                    <span className={`font-mono font-bold text-sm transition-colors ${isExp ? 'text-fuchsia-400' : isProf ? 'text-purple-400' : 'text-gray-600'}`}>{formatMod(totalMod)}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    <div className="mt-4 flex gap-4 text-[10px] text-gray-500 justify-center font-fantasy tracking-wider uppercase">
+                                        <span className="flex items-center"><div className="w-2 h-2 rounded-full bg-purple-600 mr-1 border border-purple-400"></div> Competencia</span>
+                                        <span className="flex items-center"><div className="w-2 h-2 rounded-full bg-fuchsia-500 mr-1 shadow-[0_0_5px_rgba(217,70,239,0.8)] border border-fuchsia-300"></div> Pericia</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {}
+                            <div className="space-y-6">
+                                
+                                {/* RECURSOS DE CLASE */}
+                                <div data-tab="combat" className="tab-section rpg-panel p-4">
+                                    <div className="flex justify-between items-center mb-4 rpg-panel-header pb-2 px-2">
+                                        <h2 className="text-lg font-fantasy font-bold text-purple-300 tracking-widest uppercase">Recursos</h2>
+                                        <button onClick={() => setAddModal({isOpen: true, type: 'resource', data: {}})} className="text-[10px] font-fantasy uppercase tracking-wider bg-gray-800 border border-gray-600 hover:border-purple-500 hover:text-white px-2 py-1 rounded transition-colors shadow-md">+ Añadir</button>
+                                    </div>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        {resources.map((res, idx) => (
+                                            <div key={res.id} className="flex flex-col items-center bg-gray-900/80 p-3 rounded-lg border border-gray-700 relative group shadow-inner">
+                                                <span className="text-gray-300 text-[10px] font-bold uppercase tracking-wider text-center h-6 overflow-hidden w-full px-2">{res.name}</span>
+                                                <div className="flex items-center space-x-2 mt-2">
+                                                    <button onClick={() => {
+                                                        const newRes = [...resources]; newRes[idx].current = Math.max(0, res.current - 1); setResources(newRes);
+                                                    }} className="w-6 h-6 bg-gray-800 border border-gray-600 rounded flex items-center justify-center text-gray-400 hover:text-white hover:border-gray-400 transition-colors">-</button>
+                                                    <div className="flex flex-col items-center">
+                                                        <span className="text-xl font-bold text-white font-sans">{res.current}</span>
+                                                        {res.max > 0 && <span className="text-gray-600 text-[10px] font-sans">/ {res.max}</span>}
+                                                    </div>
+                                                    <button onClick={() => {
+                                                        const newRes = [...resources]; newRes[idx].current = res.max > 0 ? Math.min(res.max, res.current + 1) : res.current + 1; setResources(newRes);
+                                                    }} className="w-6 h-6 bg-gray-800 border border-gray-600 rounded flex items-center justify-center text-gray-400 hover:text-white hover:border-gray-400 transition-colors">+</button>
+                                                </div>
+                                                {res.type && <span className="text-fuchsia-500 text-[10px] mt-1 font-bold font-sans">{res.type}</span>}
+                                                <button onClick={() => confirmDelete(`¿Borrar el recurso "${res.name}"?`, () => setResources(resources.filter(r => r.id !== res.id)))} className="absolute -top-2 -right-2 bg-red-900 border border-red-500 text-red-200 hover:bg-red-600 hover:text-white w-5 h-5 rounded-full text-xs opacity-0 group-hover:opacity-100 flex items-center justify-center shadow-lg transition-all">×</button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* COMBATE Y ARMAS */}
+                                <div data-tab="combat" className="tab-section rpg-panel p-4">
+                                    <div className="flex justify-between items-center mb-4 rpg-panel-header pb-2 px-2">
+                                        <h2 className="text-lg font-fantasy font-bold text-purple-300 tracking-widest uppercase">Arsenal</h2>
+                                        <button onClick={() => setAddModal({isOpen: true, type: 'weapon', data: {}})} className="text-[10px] font-fantasy uppercase tracking-wider bg-gray-800 border border-gray-600 hover:border-purple-500 hover:text-white px-2 py-1 rounded transition-colors shadow-md">+ Nueva Arma</button>
+                                    </div>
+                                    
+                                    <div className="flex space-x-2 overflow-x-auto pb-3 mb-2 scrollbar-hide">
+                                        {weapons.map(w => (
+                                            <div key={w.id} className="relative group flex-shrink-0">
+                                                <button onClick={() => setSelectedWeaponId(w.id)} className={`px-4 py-1.5 rounded-sm whitespace-nowrap text-sm font-bold font-fantasy tracking-wider transition-all border-b-2 ${selectedWeaponId === w.id ? 'bg-gradient-to-t from-purple-900/50 to-transparent border-purple-500 text-purple-200' : 'bg-transparent border-transparent text-gray-500 hover:text-gray-300 hover:border-gray-600'}`}>
+                                                    {w.name}
+                                                </button>
+                                                <button onClick={(e) => { e.stopPropagation(); confirmDelete(`¿Borrar "${w.name}"?`, () => {
+                                                    const newW = weapons.filter(x => x.id !== w.id); setWeapons(newW); if(selectedWeaponId===w.id) setSelectedWeaponId(newW[0]?.id||null);
+                                                })}} className="absolute -top-1 -right-1 bg-red-900 border border-red-500 text-red-200 w-4 h-4 rounded-full text-[10px] opacity-0 group-hover:opacity-100 flex items-center justify-center z-10 hover:bg-red-600 hover:text-white shadow-md">×</button>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <div className="min-h-[100px] bg-gray-900/40 rounded-lg p-3 border border-gray-800">
+                                        {weapons.find(w => w.id === selectedWeaponId) ? (
+                                            <div>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                    {weapons.find(w => w.id === selectedWeaponId).attacks.map((act, i) => (
+                                                        <div key={`${selectedWeaponId}-${i}`} className="animate-attack bg-gradient-to-r from-gray-900 to-gray-800 border border-gray-700 border-l-4 border-l-purple-600 p-3 rounded relative group shadow-md">
+                                                            <h3 className="font-bold text-white text-sm pr-4 font-fantasy tracking-wider">{act.name}</h3>
+                                                            <div className="flex justify-between items-center mt-2 bg-gray-950/50 p-1.5 rounded border border-gray-800">
+                                                                <span className="text-green-400 font-mono text-xs font-bold">🎯 {act.atk}</span>
+                                                                <span className="text-red-400 font-mono text-xs font-bold">🩸 {act.dmg}</span>
+                                                            </div>
+                                                            <p className="text-[11px] text-gray-400 mt-2 leading-tight whitespace-pre-wrap">{act.notes}</p>
+                                                            <button onClick={() => confirmDelete(`¿Borrar ataque "${act.name}"?`, () => {
+                                                                setWeapons(weapons.map(w => w.id === selectedWeaponId ? {...w, attacks: w.attacks.filter((_,idx)=>idx!==i)} : w));
+                                                            })} className="absolute top-2 right-2 text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 font-bold">×</button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                <button onClick={() => setAddModal({isOpen: true, type: 'attack', data: {}})} className="mt-3 w-full border border-dashed border-gray-700 text-gray-500 hover:text-purple-300 hover:border-purple-500 hover:bg-purple-900/10 py-2 rounded text-xs transition-colors font-bold uppercase tracking-widest font-fantasy">
+                                                    + Añadir Acción
+                                                </button>
+                                            </div>
+                                        ) : <span className="text-gray-600 text-sm italic">Selecciona o crea un arma.</span>}
+                                    </div>
+                                </div>
+
+                                {/* ARMADURAS, COMPETENCIAS Y HERRAMIENTAS */}
+                                <div data-tab="inventory" className="tab-section rpg-panel p-4">
+                                    <div className="flex justify-between items-center mb-4 rpg-panel-header pb-2 px-2">
+                                        <h2 className="text-lg font-fantasy font-bold text-purple-300 tracking-widest uppercase">Equipo Activo</h2>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => setAddModal({isOpen: true, type: 'armor', data: {type: 'light'}})} className="text-[10px] font-fantasy uppercase tracking-wider bg-gray-800 border border-gray-600 hover:border-purple-500 hover:text-white px-2 py-1 rounded transition-colors shadow-md">+ Armadura</button>
+                                            <button onClick={() => setAddModal({isOpen: true, type: 'tool', data: {}})} className="text-[10px] font-fantasy uppercase tracking-wider bg-gray-800 border border-gray-600 hover:border-purple-500 hover:text-white px-2 py-1 rounded transition-colors shadow-md">+ Utilidad</button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="mb-4 flex items-center text-[11px] text-gray-400 bg-gray-900/50 border border-gray-800 p-2 rounded shadow-inner">
+                                        <span className="uppercase tracking-wider font-fantasy">Modificador Mágico a CA: </span>
+                                        <input type="number" value={miscAc} onChange={e => setMiscAc(handleNumInput(e.target.value))} className="w-12 bg-gray-800 text-white rounded text-center ml-2 outline-none focus:border-purple-500 border border-gray-600 font-bold" />
+                                    </div>
+
+                                    {/* Lista de Armaduras y Escudos */}
+                                    <div className="space-y-2 mb-6">
+                                        {armors.map(arm => (
+                                            <div key={arm.id} className={`flex justify-between items-center bg-gray-900/40 p-2 rounded group border transition-colors ${arm.equipped ? 'border-purple-500/50 bg-purple-900/10 shadow-[inset_0_0_10px_rgba(168,85,247,0.1)]' : 'border-gray-800 hover:border-gray-600'}`}>
+                                                <div className="flex items-center gap-3 flex-1">
+                                                    <div className="relative flex items-center justify-center cursor-pointer" onClick={() => toggleArmorEquip(arm.id)}>
+                                                        <div className={`w-5 h-5 rounded border ${arm.equipped ? 'bg-purple-600 border-purple-400' : 'bg-gray-800 border-gray-600'} flex items-center justify-center transition-colors shadow-sm`}>
+                                                            {arm.equipped && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>}
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <span className={`text-sm font-bold ${arm.equipped ? 'text-purple-200' : 'text-gray-300'}`}>{arm.name}</span>
+                                                        <div className="flex items-center gap-2 mt-0.5">
+                                                            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-fantasy">{arm.type === 'light' ? 'Ligera' : arm.type === 'medium' ? 'Media' : arm.type === 'heavy' ? 'Pesada' : 'Escudo'}</span>
+                                                            {arm.stealthDis && <span className="text-[9px] bg-red-950 text-red-400 px-1.5 py-0.5 rounded border border-red-900 font-bold tracking-wider">⚠ Desv. Sigilo</span>}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-xs font-mono font-bold text-gray-300 bg-gray-800 border border-gray-700 px-2 py-1 rounded shadow-inner">CA {arm.ac}</span>
+                                                    <button onClick={() => confirmDelete(`¿Borrar "${arm.name}"?`, () => setArmors(armors.filter(a => a.id !== arm.id)))} className="text-gray-600 hover:text-red-500 font-bold text-lg leading-none opacity-0 group-hover:opacity-100 transition-opacity">×</button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {armors.length === 0 && <span className="text-gray-600 text-xs italic">Sin armaduras registradas.</span>}
+                                    </div>
+
+                                    {/* Lista de Herramientas */}
+                                    <h3 className="text-sm font-fantasy font-bold text-gray-400 mb-2 border-b border-gray-800 pb-1 uppercase tracking-widest">Utilidad y Herramientas</h3>
+                                    <div className="space-y-2">
+                                        {tools.map(tool => (
+                                            <div key={tool.id} className="bg-gray-900/40 p-3 rounded group border border-gray-800 hover:border-gray-600 transition-colors">
+                                                <div className="flex justify-between items-start">
+                                                    <span className="text-sm font-bold text-gray-200">{tool.name}</span>
+                                                    <button onClick={() => confirmDelete(`¿Borrar "${tool.name}"?`, () => setTools(tools.filter(t => t.id !== tool.id)))} className="text-gray-600 hover:text-red-500 font-bold text-lg leading-none opacity-0 group-hover:opacity-100 transition-opacity">×</button>
+                                                </div>
+                                                <p className="text-[11px] text-gray-400 mt-1 whitespace-pre-wrap">{tool.desc}</p>
+                                            </div>
+                                        ))}
+                                        {tools.length === 0 && <span className="text-gray-600 text-xs italic">Sin herramientas registradas.</span>}
+                                    </div>
+                                </div>
+
+                                {}
+                                {/* INVENTARIO DE CONSUMIBLES */}
+                                <div data-tab="inventory" className="tab-section rpg-panel p-4">
+                                    <div className="flex justify-between items-center mb-4 rpg-panel-header pb-2 px-2">
+                                        <h2 className="text-lg font-fantasy font-bold text-purple-300 tracking-widest uppercase">Mochila</h2>
+                                        <button onClick={() => setAddModal({isOpen: true, type: 'item', data: {}})} className="text-[10px] font-fantasy uppercase tracking-wider bg-gray-800 border border-gray-600 hover:border-purple-500 hover:text-white px-2 py-1 rounded transition-colors shadow-md">+ Objeto</button>
+                                    </div>
+                                    
+                                    <div className="flex justify-center space-x-2 mb-4 bg-gray-900/60 p-3 rounded border border-gray-800 shadow-inner">
+                                        {['po', 'pp', 'pc'].map(type => (
+                                            <div key={type} className="flex flex-col items-center bg-gray-800 border border-gray-700 p-1.5 rounded flex-1 shadow-inner">
+                                                <span className={`font-fantasy font-bold text-[10px] tracking-widest ${type==='po'?'text-yellow-400':type==='pp'?'text-gray-300':'text-orange-400'}`}>{type.toUpperCase()}</span>
+                                                <div className="flex items-center w-full mt-1">
+                                                    <button onClick={() => addCurrency(type, -1)} className="w-5 h-5 bg-gray-700 hover:bg-gray-600 text-white rounded text-xs transition-colors border border-gray-600">-</button>
+                                                    <input type="number" value={currency[type]} onChange={e => setCurrency(prev => ({ ...prev, [type]: handleNumInput(e.target.value) }))} className="w-full bg-transparent text-center font-mono font-bold text-sm outline-none text-white p-0 m-0 focus:text-purple-300" />
+                                                    <button onClick={() => addCurrency(type, 1)} className="w-5 h-5 bg-gray-700 hover:bg-gray-600 text-white rounded text-xs transition-colors border border-gray-600">+</button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                                        {inventory.map((item, idx) => (
+                                            <div key={item.id} className="flex justify-between items-start bg-gray-900/40 p-2.5 rounded group border border-gray-800 hover:border-gray-600 transition-colors">
+                                                <div className="flex-1 pr-2">
+                                                    <div className="flex items-center space-x-2">
+                                                        <span className="text-sm font-bold text-gray-200">{item.name}</span>
+                                                        <span className="text-[10px] font-mono bg-gray-800 border border-gray-700 px-1.5 py-0.5 rounded text-purple-300 font-bold shadow-inner">x{item.qty}</span>
+                                                    </div>
+                                                    <p className="text-[11px] text-gray-400 mt-1 leading-tight">{item.desc}</p>
+                                                </div>
+                                                
+                                                <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity bg-gray-950 p-1 rounded-lg border border-gray-700 shadow-md">
+                                                    <button onClick={() => adjustInvQty(item.id, -1)} className="w-7 h-7 bg-gray-800 hover:bg-gray-700 rounded text-gray-300 flex items-center justify-center text-sm hover:text-white transition-colors">-</button>
+                                                    <button onClick={() => adjustInvQty(item.id, 1)} className="w-7 h-7 bg-gray-800 hover:bg-gray-700 rounded text-gray-300 flex items-center justify-center text-sm hover:text-white ml-1 transition-colors">+</button>
+                                                    <div className="w-px h-5 bg-gray-700 mx-3"></div>
+                                                    <button onClick={() => confirmDelete(`¿Borrar "${item.name}"?`, () => setInventory(inventory.filter(x => x.id !== item.id)))} className="text-red-500 hover:text-red-400 text-xl font-bold pr-1 leading-none transition-colors">×</button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {inventory.length === 0 && <span className="text-gray-600 text-xs italic">La mochila está vacía.</span>}
+                                    </div>
+                                </div>
+
+                                {/* RASGOS Y DOTES */}
+                                <div data-tab="character" className="tab-section grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="rpg-panel p-4">
+                                        <div className="flex justify-between items-center mb-4 rpg-panel-header pb-2 px-2">
+                                            <h2 className="text-lg font-fantasy font-bold text-purple-300 tracking-widest uppercase">Rasgos</h2>
+                                            <button onClick={() => setAddModal({isOpen: true, type: 'trait', data: {}})} className="text-[10px] font-fantasy uppercase tracking-wider bg-gray-800 border border-gray-600 hover:border-purple-500 hover:text-white px-2 py-1 rounded transition-colors shadow-md">+ Rasgo</button>
+                                        </div>
+                                        <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+                                            {traits.map((t, idx) => (
+                                                <div key={idx} className="bg-gray-900/40 border-l-2 border-purple-500 p-3 rounded border border-gray-800 border-l-purple-500 relative group shadow-sm">
+                                                    <h3 className="font-bold text-purple-200 text-sm pr-4 font-fantasy tracking-wide">{t.title}</h3>
+                                                    <p className="text-[11px] text-gray-400 mt-1 leading-tight whitespace-pre-wrap">{t.desc}</p>
+                                                    <button onClick={() => confirmDelete(`¿Borrar rasgo "${t.title}"?`, () => setTraits(traits.filter((_, i) => i !== idx)))} className="absolute top-1 right-2 text-gray-600 hover:text-red-500 opacity-0 group-hover:opacity-100 font-bold text-lg">×</button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="rpg-panel p-4">
+                                        <div className="flex justify-between items-center mb-4 rpg-panel-header pb-2 px-2">
+                                            <h2 className="text-lg font-fantasy font-bold text-yellow-400 tracking-widest uppercase">Dotes</h2>
+                                            <button onClick={() => setAddModal({isOpen: true, type: 'feat', data: {}})} className="text-[10px] font-fantasy uppercase tracking-wider bg-gray-800 border border-gray-600 hover:border-yellow-500 hover:text-white px-2 py-1 rounded transition-colors shadow-md">+ Dote</button>
+                                        </div>
+                                        <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+                                            {feats.map((t, idx) => (
+                                                <div key={idx} className="bg-gray-900/40 border-l-2 border-yellow-600 p-3 rounded border border-gray-800 border-l-yellow-600 relative group shadow-sm">
+                                                    <h3 className="font-bold text-yellow-200 text-sm pr-4 font-fantasy tracking-wide">{t.title}</h3>
+                                                    <p className="text-[11px] text-gray-400 mt-1 leading-tight whitespace-pre-wrap">{t.desc}</p>
+                                                    <button onClick={() => confirmDelete(`¿Borrar dote "${t.title}"?`, () => setFeats(feats.filter((_, i) => i !== idx)))} className="absolute top-1 right-2 text-gray-600 hover:text-red-500 opacity-0 group-hover:opacity-100 font-bold text-lg">×</button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {}
+                                {/* HECHIZOS (Magia) */}
+                                <div data-tab="grimoire" className="tab-section rpg-panel p-4 border border-fuchsia-900/50">
+                                    <div className="flex flex-wrap justify-between items-center mb-4 rpg-panel-header !border-l-fuchsia-500 pb-3 px-4 gap-4">
+                                        <h2 className="text-lg md:text-xl font-fantasy font-bold text-fuchsia-400 tracking-widest uppercase whitespace-nowrap">Libro de Conjuros</h2>
+                                        
+                                        {/* Alineación arreglada para los contadores y botón */}
+                                        <div className="flex gap-4 items-center flex-wrap flex-1 justify-end">
+                                            <div className="flex items-center text-[10px] text-gray-400 bg-gray-900 border border-gray-700 px-3 py-1.5 rounded font-fantasy uppercase tracking-wider shadow-inner">
+                                                <span className="mr-2">Conocidos:</span>
+                                                <span className="text-fuchsia-300 font-bold text-sm font-sans mr-1">{spells.length}</span> /
+                                                <input type="number" value={spellLimits.known} onChange={e => setSpellLimits({...spellLimits, known: handleNumInput(e.target.value)})} className="w-8 bg-transparent text-center text-white outline-none focus:border-b focus:border-fuchsia-500 font-sans ml-1" placeholder="-" />
+                                            </div>
+                                            <div className="flex items-center text-[10px] text-gray-400 bg-gray-900 border border-gray-700 px-3 py-1.5 rounded font-fantasy uppercase tracking-wider shadow-inner">
+                                                <span className="mr-2">Preparados:</span>
+                                                <span className="text-fuchsia-300 font-bold text-sm font-sans mr-1">{spells.filter(s=>s.prepared).length}</span> /
+                                                <input type="number" value={spellLimits.prepared} onChange={e => setSpellLimits({...spellLimits, prepared: handleNumInput(e.target.value)})} className="w-8 bg-transparent text-center text-white outline-none focus:border-b focus:border-fuchsia-500 font-sans ml-1" placeholder="-" />
+                                            </div>
+                                            <button onClick={() => setAddModal({isOpen: true, type: 'spell', data: {}})} className="text-xs font-fantasy uppercase tracking-wider bg-fuchsia-900/50 border border-fuchsia-700 hover:bg-fuchsia-600 text-fuchsia-100 hover:text-white px-4 py-2 rounded transition-colors shadow-md">+ Conjuro</button>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Ranuras (Slots) */}
+                                    <div className="flex flex-wrap gap-2 mb-6 pb-6 border-b border-gray-800 justify-center md:justify-start">
+                                        {[1,2,3,4,5,6,7,8,9].map(lvl => (
+                                            <div key={lvl} className="flex flex-col items-center bg-gray-900/60 p-2 rounded-lg border border-gray-700 w-[76px] shadow-inner">
+                                                <span className="text-[10px] font-bold text-fuchsia-400 font-fantasy uppercase tracking-wider">Nivel {lvl}</span>
+                                                <div className="flex items-center justify-between w-full mt-2 bg-gray-950 rounded border border-gray-800 px-1 py-1">
+                                                    <button onClick={() => adjustSpellSlot(lvl, -1)} className="text-gray-500 hover:text-white px-1 leading-none font-bold">-</button>
+                                                    <span className="text-white text-sm font-mono font-bold mx-1">{spellSlots[lvl].current}</span>
+                                                    <button onClick={() => adjustSpellSlot(lvl, 1)} className="text-gray-500 hover:text-white px-1 leading-none font-bold">+</button>
+                                                </div>
+                                                <div className="text-gray-500 text-[10px] mt-2 flex items-center justify-center w-full bg-gray-900 rounded py-0.5">
+                                                    Max <input type="number" value={spellSlots[lvl].max} onChange={e => setSpellSlots({...spellSlots, [lvl]: {...spellSlots[lvl], max: handleNumInput(e.target.value)}})} className="w-6 bg-transparent border-b border-gray-700 text-center outline-none text-gray-300 ml-1 focus:border-fuchsia-500 font-mono" />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Lista de Conjuros */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto pr-2">
+                                        {spells.sort((a,b)=>a.level - b.level).map(sp => {
+                                            const compStr = [sp.compV ? 'V' : null, sp.compS ? 'S' : null, sp.compM ? 'M' : null].filter(Boolean).join(', ');
+                                            const mDesc = sp.compM && sp.compMDesc ? ` (${sp.compMDesc})` : '';
+                                            return (
+                                                <div key={sp.id} onClick={() => toggleSpellPreparation(sp)} 
+                                                     className={`flex flex-col p-3 rounded-lg cursor-pointer border transition-all duration-300 ${sp.prepared ? 'bg-gradient-to-br from-fuchsia-900/30 to-purple-900/10 border-fuchsia-500 shadow-[0_0_15px_rgba(217,70,239,0.2)]' : 'bg-gray-900/40 border-gray-800 hover:border-gray-600'} relative group`}>
+                                                    <div className="flex justify-between items-center mb-2">
+                                                        <div className="flex items-center space-x-3">
+                                                            <span className={`text-[10px] font-bold font-mono px-2 py-1 rounded ${sp.prepared ? 'bg-fuchsia-600 text-white shadow-[0_0_8px_#d946ef]' : 'bg-gray-800 text-gray-400 border border-gray-700'}`}>Nv {sp.level}</span>
+                                                            <span className={`font-bold text-sm font-fantasy tracking-wider ${sp.prepared ? 'text-fuchsia-200' : 'text-gray-300'}`}>{sp.name} {sp.prepared && '✨'}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex flex-col text-[10px] text-gray-400 font-medium mb-2 bg-gray-950/50 p-2 rounded border border-gray-800/50">
+                                                        <div className="flex space-x-3">
+                                                            {sp.range && sp.range !== '-' && <span><span className="text-gray-500">Alc:</span> {sp.range}</span>}
+                                                            {(sp.shape && sp.shape !== '-' || sp.size && sp.size !== '-') && <span><span className="text-gray-500">Área:</span> {sp.shape} {sp.size}</span>}
+                                                        </div>
+                                                        {compStr && <span className="mt-1"><span className="text-gray-500">Comp:</span> <span className="text-purple-300">{compStr}</span>{mDesc}</span>}
+                                                    </div>
+                                                    <p className="text-[11px] text-gray-400 mt-1 leading-snug whitespace-pre-wrap">{sp.notes}</p>
+                                                    <button onClick={(e) => { e.stopPropagation(); confirmDelete(`¿Borrar hechizo "${sp.name}"?`, () => setSpells(spells.filter(s => s.id !== sp.id))); }} className="absolute top-2 right-2 text-gray-600 hover:text-red-500 font-bold opacity-0 group-hover:opacity-100 text-lg transition-opacity">×</button>
+                                                </div>
+                                            )
+                                        })}
+                                        {spells.length === 0 && <div className="col-span-1 md:col-span-2 p-8 border-2 border-dashed border-gray-800 rounded-lg text-center"><span className="text-gray-500 text-sm italic font-fantasy tracking-widest uppercase">El grimorio está vacío.</span></div>}
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        {}
+                        {/* ================= BOTÓN FLOTANTE DIARIO ================= */}
+                        <div data-tab="inventory" className="tab-section fixed bottom-20 right-6 z-40">
+                            <button onClick={() => setNotesModalOpen(true)} className="bg-gradient-to-br from-purple-600 to-indigo-800 hover:from-purple-500 hover:to-indigo-700 text-white p-4 rounded-full shadow-[0_0_20px_rgba(147,51,234,0.6)] border border-purple-400 transition-transform duration-300 hover:scale-110 flex items-center justify-center" title="Abrir Diario de Sesión">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        </main>
+
+                        <nav className="bottom-nav fixed bottom-0 left-0 right-0 z-40 grid grid-cols-4 gap-1 border-t border-gray-700 bg-gray-950/95 p-1 backdrop-blur-md" aria-label="Navegacion principal">
+                            <button type="button" onClick={() => selectTab('combat')} className={`bottom-nav-button flex flex-col items-center justify-center gap-1 rounded-md text-[10px] font-fantasy uppercase tracking-wider transition-colors ${activeTab === 'combat' ? 'bg-red-950/70 text-red-300 shadow-inner' : 'text-gray-500 hover:bg-gray-800 hover:text-gray-200'}`} aria-current={activeTab === 'combat' ? 'page' : undefined}>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m14.5 4.5 5 5-9 9H5.5v-5l9-9Z"/><path d="m13 6 5 5"/><path d="m4 20 3-3"/></svg><span>Combate</span>
+                            </button>
+                            <button type="button" onClick={() => selectTab('character')} className={`bottom-nav-button flex flex-col items-center justify-center gap-1 rounded-md text-[10px] font-fantasy uppercase tracking-wider transition-colors ${activeTab === 'character' ? 'bg-purple-950/70 text-purple-300 shadow-inner' : 'text-gray-500 hover:bg-gray-800 hover:text-gray-200'}`} aria-current={activeTab === 'character' ? 'page' : undefined}>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4 3.4-6 8-6s7.2 2 8 6"/></svg><span>Personaje</span>
+                            </button>
+                            <button type="button" onClick={() => selectTab('grimoire')} className={`bottom-nav-button flex flex-col items-center justify-center gap-1 rounded-md text-[10px] font-fantasy uppercase tracking-wider transition-colors ${activeTab === 'grimoire' ? 'bg-fuchsia-950/70 text-fuchsia-300 shadow-inner' : 'text-gray-500 hover:bg-gray-800 hover:text-gray-200'}`} aria-current={activeTab === 'grimoire' ? 'page' : undefined}>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M5 4.5A3.5 3.5 0 0 1 8.5 2H19v17H8.5A3.5 3.5 0 0 0 5 22Z"/><path d="M5 4.5V22M9 7h6M9 11h6"/></svg><span>Grimorio</span>
+                            </button>
+                            <button type="button" onClick={() => selectTab('inventory')} className={`bottom-nav-button flex flex-col items-center justify-center gap-1 rounded-md text-[10px] font-fantasy uppercase tracking-wider transition-colors ${activeTab === 'inventory' ? 'bg-amber-950/70 text-amber-300 shadow-inner' : 'text-gray-500 hover:bg-gray-800 hover:text-gray-200'}`} aria-current={activeTab === 'inventory' ? 'page' : undefined}>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M5 8h14l-1 13H6L5 8Z"/><path d="M8 8V6a4 4 0 0 1 8 0v2"/></svg><span>Inventario</span>
+                            </button>
+                        </nav>
+
+                        {/* ================= MODALES ================= */}
+                        
+                        {/* MODAL DIARIO DE SESIÓN */}
+                        {notesModalOpen && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4" onClick={() => setNotesModalOpen(false)}>
+                                <div className="rpg-panel p-6 max-w-3xl w-full h-[85vh] flex flex-col shadow-2xl animate-attack border border-purple-500/50" onClick={e => e.stopPropagation()}>
+                                    <div className="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
+                                        <h3 className="text-2xl font-fantasy font-bold text-purple-200 flex items-center tracking-widest"><svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mr-3 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg> Diario de Campaña</h3>
+                                        <div className="flex space-x-4 items-center">
+                                            <button onClick={() => setSessionNotes([{ id: 'note_' + Date.now(), date: new Date().toLocaleDateString(), text: "" }, ...sessionNotes])} className="px-4 py-2 bg-purple-700 hover:bg-purple-600 text-white rounded font-bold shadow-md transition-colors font-fantasy uppercase tracking-wider text-xs border border-purple-500">+ Nueva Entrada</button>
+                                            <button onClick={() => setNotesModalOpen(false)} className="text-gray-400 hover:text-white text-3xl leading-none transition-colors">&times;</button>
+                                        </div>
+                                    </div>
+                                    <div className="flex-1 overflow-y-auto space-y-6 pr-2">
+                                        {sessionNotes.map((note) => (
+                                            <div key={note.id} className="bg-gray-900/60 p-5 rounded-lg border border-gray-700 relative group shadow-inner">
+                                                <input type="text" value={note.date} onChange={e => setSessionNotes(sessionNotes.map(n => n.id === note.id ? {...n, date: e.target.value} : n))} className="bg-transparent border-b border-gray-600 text-purple-300 font-bold mb-4 outline-none focus:border-purple-400 w-1/2 font-fantasy tracking-wider" />
+                                                <textarea value={note.text} onChange={e => setSessionNotes(sessionNotes.map(n => n.id === note.id ? {...n, text: e.target.value} : n))} placeholder="Escribe aquí los detalles de la sesión, PNJs, botín..." className="w-full bg-gray-950 border border-gray-800 rounded p-4 text-gray-300 text-sm outline-none focus:border-purple-500 min-h-[200px] resize-y leading-relaxed" />
+                                                <button onClick={() => confirmDelete(`¿Borrar las notas de la sesión "${note.date}"?`, () => setSessionNotes(sessionNotes.filter(n => n.id !== note.id)))} className="absolute top-4 right-4 text-gray-500 hover:text-red-500 opacity-0 group-hover:opacity-100 font-bold transition-opacity text-xl">×</button>
+                                            </div>
+                                        ))}
+                                        {sessionNotes.length === 0 && <div className="text-center text-gray-600 italic mt-10 font-fantasy text-lg tracking-widest uppercase">El diario está vacío.</div>}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* CONFIRMAR BORRADO */}
+                        {confirmDialog.isOpen && (
+                            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+                                <div className={`rpg-panel border ${confirmDialog.isAlert ? 'border-fuchsia-600' : 'border-red-600'} rounded-lg p-6 max-w-sm w-full shadow-2xl animate-attack`}>
+                                    <h3 className="text-xl font-fantasy font-bold text-white mb-2 tracking-widest uppercase">{confirmDialog.isAlert ? 'Aviso del Sistema' : 'Confirmar Acción'}</h3>
+                                    <p className="text-gray-300 text-sm mb-8 leading-relaxed">{confirmDialog.message}</p>
+                                    <div className="flex justify-end space-x-3">
+                                        {!confirmDialog.isAlert && (
+                                            <button onClick={closeConfirm} className="px-4 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white rounded font-bold transition-colors text-xs uppercase tracking-wider">Cancelar</button>
+                                        )}
+                                        <button onClick={() => { if (confirmDialog.onConfirm) confirmDialog.onConfirm(); closeConfirm(); }} className={`px-4 py-2 text-white rounded font-bold transition-colors text-xs uppercase tracking-wider border ${confirmDialog.isAlert ? 'bg-fuchsia-700 hover:bg-fuchsia-600 border-fuchsia-500 shadow-[0_0_10px_rgba(217,70,239,0.5)]' : 'bg-red-700 hover:bg-red-600 border-red-500 shadow-[0_0_10px_rgba(220,38,38,0.5)]'}`}>
+                                            {confirmDialog.isAlert ? 'Entendido' : 'Eliminar'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* MODAL HABILIDADES */}
+                        {skillModal.isOpen && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4" onClick={() => setSkillModal({ isOpen: false, skillKey: null, skillName: "" })}>
+                                <div className="rpg-panel border border-purple-500/50 rounded-lg p-6 max-w-sm w-full shadow-2xl animate-attack" onClick={e => e.stopPropagation()}>
+                                    <div className="flex justify-between items-center mb-6 border-b border-gray-700 pb-3">
+                                        <h3 className="text-xl font-fantasy font-bold text-white tracking-widest">{skillModal.skillName}</h3>
+                                        <button onClick={() => setSkillModal({ isOpen: false, skillKey: null, skillName: "" })} className="text-gray-500 hover:text-white text-3xl leading-none">&times;</button>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <button onClick={() => updateSkillProficiency('none')} className={`w-full py-3 rounded border text-sm font-bold font-fantasy tracking-wider uppercase transition-colors ${!proficiencies.expertise.includes(skillModal.skillKey) && !proficiencies.proficient.includes(skillModal.skillKey) ? 'bg-gray-700 border-gray-500 text-white' : 'bg-gray-900 border-gray-700 text-gray-500 hover:border-gray-500'}`}>
+                                            Sin Competencia
+                                        </button>
+                                        <button onClick={() => updateSkillProficiency('proficient')} className={`w-full py-3 rounded border text-sm font-bold font-fantasy tracking-wider uppercase transition-colors flex items-center justify-center space-x-3 ${proficiencies.proficient.includes(skillModal.skillKey) ? 'bg-purple-900/40 border-purple-500 text-purple-300' : 'bg-gray-900 border-gray-700 text-gray-500 hover:border-purple-500/50'}`}>
+                                            <div className="w-3 h-3 rounded-full bg-purple-500 border border-purple-300"></div><span>Competencia</span>
+                                        </button>
+                                        <button onClick={() => updateSkillProficiency('expertise')} className={`w-full py-3 rounded border text-sm font-bold font-fantasy tracking-wider uppercase transition-colors flex items-center justify-center space-x-3 ${proficiencies.expertise.includes(skillModal.skillKey) ? 'bg-fuchsia-900/40 border-fuchsia-500 text-fuchsia-300 shadow-[0_0_15px_rgba(217,70,239,0.2)]' : 'bg-gray-900 border-gray-700 text-gray-500 hover:border-fuchsia-500/50'}`}>
+                                            <div className="w-3 h-3 rounded-full bg-fuchsia-500 border border-fuchsia-300 shadow-[0_0_8px_rgba(217,70,239,0.8)]"></div><span>Pericia</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* MODAL GENÉRICO AÑADIR */}
+                        {addModal.isOpen && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4" onClick={() => setAddModal({isOpen:false, type:null, data:{}})}>
+                                <div className="rpg-panel border border-purple-500/50 rounded-lg p-6 max-w-md w-full shadow-2xl animate-attack" onClick={e => e.stopPropagation()}>
+                                    <div className="flex justify-between items-center mb-6 border-b border-gray-700 pb-3">
+                                        <h3 className="text-xl font-fantasy font-bold text-white tracking-widest uppercase">Creación</h3>
+                                        <button onClick={() => setAddModal({isOpen:false, type:null, data:{}})} className="text-gray-500 hover:text-white text-3xl leading-none">&times;</button>
+                                    </div>
+                                    
+                                    <div className="space-y-5">
+                                        {(addModal.type === 'item' || addModal.type === 'armor' || addModal.type === 'tool' || addModal.type === 'weapon' || addModal.type === 'resource' || addModal.type === 'spell' || addModal.type === 'attack') && (
+                                            <div>
+                                                <label className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1.5 block font-fantasy">Nombre del Elemento</label>
+                                                <input type="text" autoFocus value={addModal.data.name || ''} onChange={e => setAddModal({...addModal, data: {...addModal.data, name: e.target.value}})} className="w-full bg-gray-950 border border-gray-700 rounded p-2.5 text-white focus:border-purple-500 outline-none" />
+                                            </div>
+                                        )}
+
+                                        {addModal.type === 'item' && (
+                                            <div className="flex gap-4">
+                                                <div className="w-1/3">
+                                                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1.5 block font-fantasy">Cant.</label>
+                                                    <input type="number" value={addModal.data.qty || ''} onChange={e => setAddModal({...addModal, data: {...addModal.data, qty: handleNumInput(e.target.value)}})} className="w-full bg-gray-950 border border-gray-700 rounded p-2.5 text-white focus:border-purple-500 outline-none text-center" />
+                                                </div>
+                                                <div className="w-2/3">
+                                                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1.5 block font-fantasy">Breve Desc.</label>
+                                                    <input type="text" placeholder="Ej: 50 pies, cura 2d4..." value={addModal.data.desc || ''} onChange={e => setAddModal({...addModal, data: {...addModal.data, desc: e.target.value}})} className="w-full bg-gray-950 border border-gray-700 rounded p-2.5 text-white focus:border-purple-500 outline-none" />
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {addModal.type === 'armor' && (
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1.5 block font-fantasy">Categoría</label>
+                                                    <select value={addModal.data.type || 'light'} onChange={e => setAddModal({...addModal, data: {...addModal.data, type: e.target.value}})} className="w-full bg-gray-950 border border-gray-700 rounded p-2.5 text-white focus:border-purple-500 outline-none appearance-none">
+                                                        <option value="light">Armadura Ligera</option>
+                                                        <option value="medium">Armadura Media</option>
+                                                        <option value="heavy">Armadura Pesada</option>
+                                                        <option value="shield">Escudo</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1.5 block font-fantasy">Clase de Armadura (CA) que otorga</label>
+                                                    <input type="number" placeholder="Ej: 11" value={addModal.data.ac || ''} onChange={e => setAddModal({...addModal, data: {...addModal.data, ac: handleNumInput(e.target.value)}})} className="w-full bg-gray-950 border border-gray-700 rounded p-2.5 text-white focus:border-purple-500 outline-none" />
+                                                </div>
+                                                <label className="flex items-center space-x-3 text-sm text-gray-300 cursor-pointer pt-2 bg-gray-900/50 p-3 rounded border border-gray-800">
+                                                    <input type="checkbox" checked={addModal.data.stealthDis || false} onChange={e => setAddModal({...addModal, data: {...addModal.data, stealthDis: e.target.checked}})} className="w-5 h-5 accent-red-600 bg-gray-950 border-gray-700 rounded" />
+                                                    <span className="font-medium">Impone Desventaja en Sigilo</span>
+                                                </label>
+                                            </div>
+                                        )}
+
+                                        {addModal.type === 'tool' && (
+                                            <div>
+                                                <label className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1.5 block font-fantasy">Para qué sirve</label>
+                                                <textarea placeholder="Descripción del uso..." value={addModal.data.desc || ''} onChange={e => setAddModal({...addModal, data: {...addModal.data, desc: e.target.value}})} className="w-full bg-gray-950 border border-gray-700 rounded p-3 text-sm text-white focus:border-purple-500 outline-none h-24 resize-y leading-relaxed" />
+                                            </div>
+                                        )}
+                                        
+                                        {(addModal.type === 'trait' || addModal.type === 'feat') && (
+                                            <div>
+                                                <label className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1.5 block font-fantasy">Título</label>
+                                                <input type="text" autoFocus value={addModal.data.title || ''} onChange={e => setAddModal({...addModal, data: {...addModal.data, title: e.target.value}})} className="w-full bg-gray-950 border border-gray-700 rounded p-2.5 text-white focus:border-purple-500 outline-none" />
+                                            </div>
+                                        )}
+
+                                        {(addModal.type === 'trait' || addModal.type === 'feat') && (
+                                            <div>
+                                                <label className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1.5 block font-fantasy">Descripción Detallada</label>
+                                                <textarea value={addModal.data.desc || ''} onChange={e => setAddModal({...addModal, data: {...addModal.data, desc: e.target.value}})} className="w-full bg-gray-950 border border-gray-700 rounded p-3 text-sm text-white focus:border-purple-500 outline-none h-32 resize-y leading-relaxed" />
+                                            </div>
+                                        )}
+
+                                        {addModal.type === 'attack' && (
+                                            <div className="flex gap-4">
+                                                <div className="w-1/3">
+                                                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1.5 block font-fantasy">Atq (Ej. +8)</label>
+                                                    <input type="text" value={addModal.data.atk || ''} onChange={e => setAddModal({...addModal, data: {...addModal.data, atk: e.target.value}})} className="w-full bg-gray-950 border border-gray-700 rounded p-2.5 text-white focus:border-purple-500 outline-none font-mono" />
+                                                </div>
+                                                <div className="w-2/3">
+                                                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1.5 block font-fantasy">Daño (Ej. 1d6+5 Psíq)</label>
+                                                    <input type="text" value={addModal.data.dmg || ''} onChange={e => setAddModal({...addModal, data: {...addModal.data, dmg: e.target.value}})} className="w-full bg-gray-950 border border-gray-700 rounded p-2.5 text-white focus:border-purple-500 outline-none font-mono" />
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {(addModal.type === 'attack' || addModal.type === 'spell') && (
+                                            <div>
+                                                <label className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1.5 block font-fantasy">Notas / Efectos Adicionales</label>
+                                                <textarea value={addModal.data.notes || ''} onChange={e => setAddModal({...addModal, data: {...addModal.data, notes: e.target.value}})} className="w-full bg-gray-950 border border-gray-700 rounded p-3 text-sm text-white focus:border-purple-500 outline-none h-28 resize-y leading-relaxed" />
+                                            </div>
+                                        )}
+
+                                        {addModal.type === 'spell' && (
+                                            <>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1.5 block font-fantasy">Nivel (1-9)</label>
+                                                        <input type="number" min="1" max="9" value={addModal.data.level || ''} onChange={e => setAddModal({...addModal, data: {...addModal.data, level: handleNumInput(e.target.value)}})} className="w-full bg-gray-950 border border-gray-700 rounded p-2.5 text-white focus:border-fuchsia-500 outline-none text-center font-mono" />
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1.5 block font-fantasy">Alcance</label>
+                                                        <input type="text" placeholder="Ej. 60 pies" value={addModal.data.range || ''} onChange={e => setAddModal({...addModal, data: {...addModal.data, range: e.target.value}})} className="w-full bg-gray-950 border border-gray-700 rounded p-2.5 text-white focus:border-fuchsia-500 outline-none" />
+                                                    </div>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1.5 block font-fantasy">Forma de Área</label>
+                                                        <input type="text" placeholder="Ej. Esfera, Cono..." value={addModal.data.shape || ''} onChange={e => setAddModal({...addModal, data: {...addModal.data, shape: e.target.value}})} className="w-full bg-gray-950 border border-gray-700 rounded p-2.5 text-white focus:border-fuchsia-500 outline-none" />
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1.5 block font-fantasy">Tamaño Área</label>
+                                                        <input type="text" placeholder="Ej. 20 pies" value={addModal.data.size || ''} onChange={e => setAddModal({...addModal, data: {...addModal.data, size: e.target.value}})} className="w-full bg-gray-950 border border-gray-700 rounded p-2.5 text-white focus:border-fuchsia-500 outline-none" />
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-3 mt-2 bg-gray-900/50 p-4 rounded border border-gray-800">
+                                                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1 block font-fantasy border-b border-gray-700 pb-1">Componentes Requeridos</label>
+                                                    <div className="flex gap-6">
+                                                        <label className="flex items-center space-x-2 text-sm text-gray-300 cursor-pointer font-bold">
+                                                            <input type="checkbox" checked={addModal.data.compV || false} onChange={e => setAddModal({...addModal, data: {...addModal.data, compV: e.target.checked}})} className="w-4 h-4 accent-fuchsia-600 bg-gray-950 border-gray-700 rounded" />
+                                                            <span>V <span className="text-[10px] font-normal text-gray-500">(Verbal)</span></span>
+                                                        </label>
+                                                        <label className="flex items-center space-x-2 text-sm text-gray-300 cursor-pointer font-bold">
+                                                            <input type="checkbox" checked={addModal.data.compS || false} onChange={e => setAddModal({...addModal, data: {...addModal.data, compS: e.target.checked}})} className="w-4 h-4 accent-fuchsia-600 bg-gray-950 border-gray-700 rounded" />
+                                                            <span>S <span className="text-[10px] font-normal text-gray-500">(Gestos)</span></span>
+                                                        </label>
+                                                        <label className="flex items-center space-x-2 text-sm text-gray-300 cursor-pointer font-bold">
+                                                            <input type="checkbox" checked={addModal.data.compM || false} onChange={e => setAddModal({...addModal, data: {...addModal.data, compM: e.target.checked}})} className="w-4 h-4 accent-fuchsia-600 bg-gray-950 border-gray-700 rounded" />
+                                                            <span>M <span className="text-[10px] font-normal text-gray-500">(Objeto)</span></span>
+                                                        </label>
+                                                    </div>
+                                                    {addModal.data.compM && (
+                                                        <input type="text" placeholder="Especificar material (Ej. polvo de diamante)" value={addModal.data.compMDesc || ''} onChange={e => setAddModal({...addModal, data: {...addModal.data, compMDesc: e.target.value}})} className="w-full bg-gray-950 border border-gray-700 rounded p-2.5 text-white focus:border-fuchsia-500 outline-none text-sm mt-2" />
+                                                    )}
+                                                </div>
+                                            </>
+                                        )}
+
+                                        {addModal.type === 'resource' && (
+                                            <div className="flex gap-4">
+                                                <div className="w-1/2">
+                                                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1.5 block font-fantasy">Usos Máximos</label>
+                                                    <input type="number" value={addModal.data.max || ''} onChange={e => setAddModal({...addModal, data: {...addModal.data, max: handleNumInput(e.target.value)}})} className="w-full bg-gray-950 border border-gray-700 rounded p-2.5 text-white focus:border-purple-500 outline-none text-center font-mono" />
+                                                </div>
+                                                <div className="w-1/2">
+                                                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1.5 block font-fantasy">Tipo de Dado</label>
+                                                    <input type="text" placeholder="Ej. d8 (Opcional)" value={addModal.data.dice || ''} onChange={e => setAddModal({...addModal, data: {...addModal.data, dice: e.target.value}})} className="w-full bg-gray-950 border border-gray-700 rounded p-2.5 text-white focus:border-purple-500 outline-none text-center font-mono" />
+                                                </div>
+                                            </div>
+                                        )}
+
+                                    </div>
+                                    <div className="flex justify-end space-x-4 mt-8 pt-5 border-t border-gray-700">
+                                        <button onClick={() => setAddModal({isOpen:false, type:null, data:{}})} className="px-5 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white rounded font-bold transition-colors font-fantasy uppercase tracking-wider text-xs">Cancelar</button>
+                                        <button onClick={handleAddSubmit} className="px-6 py-2 bg-purple-700 hover:bg-purple-600 border border-purple-500 text-white rounded font-bold shadow-[0_0_15px_rgba(168,85,247,0.4)] transition-all transform hover:scale-105 font-fantasy uppercase tracking-wider text-xs">Registrar</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<KaelCharacterSheet />);
+    </script>
+    <script>
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./service-worker.js');
+}
+</script>
+</body>
+</html>
