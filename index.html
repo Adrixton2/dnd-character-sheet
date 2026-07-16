@@ -20,7 +20,7 @@
     <style>
         body { 
             margin: 0; 
-            overflow-x: hidden; 
+            overflow: hidden;
             /* Fondo estilo obsidiana oscura con ligero viñeteado */
             background: radial-gradient(circle at center, #1f2937 0%, #0f172a 80%, #020617 100%);
             background-attachment: fixed;
@@ -52,6 +52,12 @@
         @keyframes fadeSlideUp {
             from { opacity: 0; transform: translateY(15px); }
             to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes tabExitToLeft {
+            to { opacity: 0; transform: translateX(-24px); }
+        }
+        @keyframes tabExitToRight {
+            to { opacity: 0; transform: translateX(24px); }
         }
         .animate-attack {
             animation: fadeSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -115,8 +121,27 @@
         .bottom-nav-button { min-height: 56px; }
         .bottom-nav-button svg { width: 20px; height: 20px; }
 
-        .tab-viewport { overscroll-behavior: contain; touch-action: pan-y; }
-        .tab-section { animation: fadeSlideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1); }
+        .tab-viewport { overscroll-behavior: contain; touch-action: pan-y; overflow-x: hidden !important; }
+        .tab-content-wrapper {
+            width: 100%;
+            overflow: hidden;
+            will-change: transform, opacity;
+        }
+        .tab-content-wrapper.is-exiting[data-direction="left"] { animation: tabExitToLeft 0.2s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+        .tab-content-wrapper.is-exiting[data-direction="right"] { animation: tabExitToRight 0.2s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+        .tab-content-wrapper.is-entering[data-direction="left"] { opacity: 0; transform: translateX(24px); }
+        .tab-content-wrapper.is-entering[data-direction="right"] { opacity: 0; transform: translateX(-24px); }
+        .tab-content-wrapper.is-entering.is-enter-active {
+            opacity: 1;
+            transform: translateX(0);
+            transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        /* La vista se anima en una sola capa; las animaciones locales esperan a que termine el cambio de pestaña. */
+        .tab-content-wrapper.is-exiting .animate-attack,
+        .tab-content-wrapper.is-entering .animate-attack {
+            animation: none !important;
+            opacity: 1;
+        }
         .tab-viewport[data-active-tab="combat"] [data-tab]:not([data-tab="combat"]),
         .tab-viewport[data-active-tab="character"] [data-tab]:not([data-tab="character"]),
         .tab-viewport[data-active-tab="grimoire"] [data-tab]:not([data-tab="grimoire"]),
@@ -229,6 +254,10 @@
             .bottom-nav-button { min-height: 2.75rem !important; flex-direction: row !important; gap: 0.375rem !important; }
             .bottom-nav-button span { white-space: nowrap; font-size: 0.5625rem; }
         }
+
+        @media (prefers-reduced-motion: reduce) {
+            .tab-content-wrapper, .animate-attack { animation: none !important; transition: none !important; }
+        }
     </style>
 </head>
 <body>
@@ -318,9 +347,17 @@
             ]);
             const [selectedWeaponId, setSelectedWeaponId] = useState('wp_soul');
             const [activeTab, setActiveTab] = useState("character");
+            const [tabTransition, setTabTransition] = useState({ phase: 'idle', pendingTab: null, direction: 'left', enterActive: false });
+            const [isTransitioning, setIsTransitioning] = useState(false);
+            const tabTransitionRef = useRef({ phase: 'idle', pendingTab: null, direction: 'left', enterActive: false });
             const tabScrollRef = useRef(null);
             const tabScrollPositions = useRef({ combat: 0, character: 0, grimoire: 0, inventory: 0 });
             const tabTouchStart = useRef(null);
+            const transitionTimerRef = useRef(null);
+            const safetyTimerRef = useRef(null);
+            const enterFrameRef = useRef(null);
+            const TAB_ORDER = ['character', 'combat', 'grimoire', 'inventory'];
+            const { phase: transitionPhase, pendingTab, direction: transitionDirection, enterActive: isEnterActive } = tabTransition;
 
             const [traits, setTraits] = useLocalStorage('kael_traits', [
                 { title: "Esquiva Asombrosa (Uncanny Dodge)", desc: "Reacción para dividir daño a la mitad." },
@@ -369,12 +406,96 @@
 
             const handleNumInput = (value) => value === "" ? "" : String(Number(value));
 
-            const selectTab = (tab) => {
-                if (tabScrollRef.current) tabScrollPositions.current[activeTab] = tabScrollRef.current.scrollTop;
-                setActiveTab(tab);
+            const restoreTabScroll = (tab) => {
                 requestAnimationFrame(() => {
                     if (tabScrollRef.current) tabScrollRef.current.scrollTop = tabScrollPositions.current[tab] || 0;
                 });
+            };
+
+            const updateTabTransition = (nextState) => {
+                const next = typeof nextState === 'function' ? nextState(tabTransitionRef.current) : nextState;
+                tabTransitionRef.current = next;
+                setTabTransition(next);
+            };
+
+            const clearTabTransitionTimers = () => {
+                if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
+                if (safetyTimerRef.current) clearTimeout(safetyTimerRef.current);
+                if (enterFrameRef.current) cancelAnimationFrame(enterFrameRef.current);
+                transitionTimerRef.current = null;
+                safetyTimerRef.current = null;
+                enterFrameRef.current = null;
+            };
+
+            const finishTransition = () => {
+                // Fin de transicion: libera siempre la navegacion antes del siguiente gesto o pulsacion.
+                clearTabTransitionTimers();
+                updateTabTransition(prev => ({ ...prev, phase: 'idle', pendingTab: null, enterActive: false }));
+                setIsTransitioning(false);
+            };
+
+            const beginEnterPhase = () => {
+                const currentTransition = tabTransitionRef.current;
+                if (currentTransition.phase !== 'exit' || !currentTransition.pendingTab) {
+                    finishTransition();
+                    return;
+                }
+
+                if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
+                transitionTimerRef.current = null;
+                const nextTab = currentTransition.pendingTab;
+
+                // La pestaña visible solo cambia despues de que la salida haya concluido.
+                setActiveTab(nextTab);
+                updateTabTransition(prev => ({ ...prev, phase: 'enter', enterActive: false }));
+                restoreTabScroll(nextTab);
+
+                enterFrameRef.current = requestAnimationFrame(() => {
+                    enterFrameRef.current = requestAnimationFrame(() => {
+                        updateTabTransition(prev => prev.phase === 'enter' ? { ...prev, enterActive: true } : prev);
+                        enterFrameRef.current = null;
+                    });
+                });
+                safetyTimerRef.current = setTimeout(finishTransition, 260);
+            };
+
+            useEffect(() => () => {
+                clearTabTransitionTimers();
+            }, []);
+
+            const requestTabChange = (tab) => {
+                if (tab === activeTab || isTransitioning || tabTransitionRef.current.phase !== 'idle') return;
+
+                if (tabScrollRef.current) tabScrollPositions.current[activeTab] = tabScrollRef.current.scrollTop;
+                const direction = TAB_ORDER.indexOf(tab) > TAB_ORDER.indexOf(activeTab) ? 'left' : 'right';
+                const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+                if (reducedMotion) {
+                    updateTabTransition(prev => ({ ...prev, direction }));
+                    setActiveTab(tab);
+                    restoreTabScroll(tab);
+                    finishTransition();
+                    return;
+                }
+
+                // Inicio de transicion: la salida conserva activeTab hasta que termina.
+                clearTabTransitionTimers();
+                setIsTransitioning(true);
+                updateTabTransition({ phase: 'exit', pendingTab: tab, direction, enterActive: false });
+                transitionTimerRef.current = setTimeout(beginEnterPhase, 260);
+            };
+
+            const handleTabTransitionEnd = (event) => {
+                if (event.target !== event.currentTarget) return;
+
+                if (transitionPhase === 'exit' && event.type === 'animationend' && pendingTab) {
+                    beginEnterPhase();
+                    return;
+                }
+
+                if (transitionPhase === 'enter' && isEnterActive && event.type === 'transitionend' && event.propertyName === 'transform') {
+                    finishTransition();
+                }
             };
 
             const handleTabTouchStart = (event) => {
@@ -396,10 +517,9 @@
 
                 if (Math.abs(deltaX) < 56 || Math.abs(deltaX) <= Math.abs(deltaY)) return;
 
-                const tabs = ['character', 'combat', 'grimoire', 'inventory'];
-                const currentIndex = tabs.indexOf(activeTab);
+                const currentIndex = TAB_ORDER.indexOf(activeTab);
                 const nextIndex = currentIndex + (deltaX < 0 ? 1 : -1);
-                if (nextIndex >= 0 && nextIndex < tabs.length) selectTab(tabs[nextIndex]);
+                if (nextIndex >= 0 && nextIndex < TAB_ORDER.length) requestTabChange(TAB_ORDER[nextIndex]);
             };
 
             const getModNum = (scoreStr) => {
@@ -609,7 +729,13 @@
                 <div className="app-shell h-[100dvh] overflow-hidden p-2 pb-20 md:p-6 md:pb-24 text-gray-200">
                     <div className="app-frame max-w-5xl h-full mx-auto flex flex-col gap-4">
                         
-                        <main ref={tabScrollRef} data-active-tab={activeTab} onScroll={() => { if (tabScrollRef.current) tabScrollPositions.current[activeTab] = tabScrollRef.current.scrollTop; }} onTouchStart={handleTabTouchStart} onTouchEnd={handleTabTouchEnd} onTouchCancel={() => { tabTouchStart.current = null; }} className="tab-viewport flex-1 min-h-0 overflow-y-auto pr-1 pb-4 space-y-6">
+                        <main ref={tabScrollRef} data-active-tab={activeTab} data-transition-direction={transitionDirection} onScroll={() => { if (tabScrollRef.current) tabScrollPositions.current[activeTab] = tabScrollRef.current.scrollTop; }} onTouchStart={handleTabTouchStart} onTouchEnd={handleTabTouchEnd} onTouchCancel={() => { tabTouchStart.current = null; }} className="tab-viewport flex-1 min-h-0 overflow-y-auto pr-1 pb-4 space-y-6">
+                        <div
+                            data-direction={transitionDirection}
+                            onAnimationEnd={handleTabTransitionEnd}
+                            onTransitionEnd={handleTabTransitionEnd}
+                            className={`tab-content-wrapper ${transitionPhase === 'exit' ? 'is-exiting' : transitionPhase === 'enter' ? `is-entering ${isEnterActive ? 'is-enter-active' : ''}` : ''}`}
+                        >
                         <div data-tab="combat" className="tab-section space-y-6">
                         {/* TOP BAR: STATS PRINCIPALES (BARRA DE VIDA, CA, ETC) */}
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
@@ -1155,19 +1281,21 @@
                             </button>
                         </div>
 
+                        </div>
+
                         </main>
 
                         <nav className="bottom-nav fixed bottom-0 left-0 right-0 z-40 grid grid-cols-4 gap-1 border-t border-gray-700 bg-gray-950/95 p-1 backdrop-blur-md" aria-label="Navegacion principal">
-                            <button type="button" onClick={() => selectTab('character')} className={`bottom-nav-button flex flex-col items-center justify-center gap-1 rounded-md text-[10px] font-fantasy uppercase tracking-wider transition-colors ${activeTab === 'character' ? 'bg-purple-950/70 text-purple-300 shadow-inner' : 'text-gray-500 hover:bg-gray-800 hover:text-gray-200'}`} aria-current={activeTab === 'character' ? 'page' : undefined}>
+                            <button type="button" onClick={() => requestTabChange('character')} className={`bottom-nav-button flex flex-col items-center justify-center gap-1 rounded-md text-[10px] font-fantasy uppercase tracking-wider transition-colors ${activeTab === 'character' ? 'bg-purple-950/70 text-purple-300 shadow-inner' : 'text-gray-500 hover:bg-gray-800 hover:text-gray-200'}`} aria-current={activeTab === 'character' ? 'page' : undefined}>
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4 3.4-6 8-6s7.2 2 8 6"/></svg><span>Personaje</span>
                             </button>
-                            <button type="button" onClick={() => selectTab('combat')} className={`bottom-nav-button flex flex-col items-center justify-center gap-1 rounded-md text-[10px] font-fantasy uppercase tracking-wider transition-colors ${activeTab === 'combat' ? 'bg-red-950/70 text-red-300 shadow-inner' : 'text-gray-500 hover:bg-gray-800 hover:text-gray-200'}`} aria-current={activeTab === 'combat' ? 'page' : undefined}>
+                            <button type="button" onClick={() => requestTabChange('combat')} className={`bottom-nav-button flex flex-col items-center justify-center gap-1 rounded-md text-[10px] font-fantasy uppercase tracking-wider transition-colors ${activeTab === 'combat' ? 'bg-red-950/70 text-red-300 shadow-inner' : 'text-gray-500 hover:bg-gray-800 hover:text-gray-200'}`} aria-current={activeTab === 'combat' ? 'page' : undefined}>
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m14.5 4.5 5 5-9 9H5.5v-5l9-9Z"/><path d="m13 6 5 5"/><path d="m4 20 3-3"/></svg><span>Combate</span>
                             </button>
-                            <button type="button" onClick={() => selectTab('grimoire')} className={`bottom-nav-button flex flex-col items-center justify-center gap-1 rounded-md text-[10px] font-fantasy uppercase tracking-wider transition-colors ${activeTab === 'grimoire' ? 'bg-fuchsia-950/70 text-fuchsia-300 shadow-inner' : 'text-gray-500 hover:bg-gray-800 hover:text-gray-200'}`} aria-current={activeTab === 'grimoire' ? 'page' : undefined}>
+                            <button type="button" onClick={() => requestTabChange('grimoire')} className={`bottom-nav-button flex flex-col items-center justify-center gap-1 rounded-md text-[10px] font-fantasy uppercase tracking-wider transition-colors ${activeTab === 'grimoire' ? 'bg-fuchsia-950/70 text-fuchsia-300 shadow-inner' : 'text-gray-500 hover:bg-gray-800 hover:text-gray-200'}`} aria-current={activeTab === 'grimoire' ? 'page' : undefined}>
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M5 4.5A3.5 3.5 0 0 1 8.5 2H19v17H8.5A3.5 3.5 0 0 0 5 22Z"/><path d="M5 4.5V22M9 7h6M9 11h6"/></svg><span>Grimorio</span>
                             </button>
-                            <button type="button" onClick={() => selectTab('inventory')} className={`bottom-nav-button flex flex-col items-center justify-center gap-1 rounded-md text-[10px] font-fantasy uppercase tracking-wider transition-colors ${activeTab === 'inventory' ? 'bg-amber-950/70 text-amber-300 shadow-inner' : 'text-gray-500 hover:bg-gray-800 hover:text-gray-200'}`} aria-current={activeTab === 'inventory' ? 'page' : undefined}>
+                            <button type="button" onClick={() => requestTabChange('inventory')} className={`bottom-nav-button flex flex-col items-center justify-center gap-1 rounded-md text-[10px] font-fantasy uppercase tracking-wider transition-colors ${activeTab === 'inventory' ? 'bg-amber-950/70 text-amber-300 shadow-inner' : 'text-gray-500 hover:bg-gray-800 hover:text-gray-200'}`} aria-current={activeTab === 'inventory' ? 'page' : undefined}>
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M5 8h14l-1 13H6L5 8Z"/><path d="M8 8V6a4 4 0 0 1 8 0v2"/></svg><span>Inventario/Lore</span>
                             </button>
                         </nav>
