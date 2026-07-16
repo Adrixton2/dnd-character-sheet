@@ -146,6 +146,12 @@
         .tab-viewport[data-active-tab="character"] [data-tab]:not([data-tab="character"]),
         .tab-viewport[data-active-tab="grimoire"] [data-tab]:not([data-tab="grimoire"]),
         .tab-viewport[data-active-tab="inventory"] [data-tab]:not([data-tab="inventory"]) { display: none; }
+        .combat-mode-panel { display: none; }
+        .tab-viewport[data-combat-mode="true"] [data-tab="combat"]:not(.combat-mode-panel) { display: none; }
+        .tab-viewport[data-combat-mode="true"] .combat-mode-panel { display: block !important; }
+        .combat-mode-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.75rem; }
+        .combat-mode-stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.625rem; }
+        .combat-mode-list { display: grid; gap: 0.625rem; }
 
         *, *::before, *::after { box-sizing: border-box; }
         button, input, select, textarea { min-width: 0; max-width: 100%; font: inherit; }
@@ -193,6 +199,8 @@
         @media (min-width: 768px) {
             .tab-viewport[data-active-tab="combat"] .space-y-6 > [data-tab="combat"] + [data-tab="combat"] { margin-top: 1rem !important; }
             .grimoire-summary { justify-content: flex-end; }
+            .combat-mode-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .combat-mode-primary { grid-column: 1 / -1; }
         }
 
         @media (max-width: 767px) {
@@ -286,7 +294,7 @@
             stats: { fue: '', des: '', con: '', int: '', sab: '', car: '' }, savingThrows: [],
             proficiencies: { expertise: [], proficient: [] }, resources: [], currency: { po: '0', pp: '0', pc: '0' },
             inventory: [], armors: [], tools: [], miscAc: '0', weapons: [], traits: [], feats: [],
-            spells: [], spellLimits: { known: '', prepared: '' }, spellSlots: createBlankSpellSlots(), grimoireConfig: createDefaultGrimoireConfig(), sessionNotes: []
+            spells: [], spellLimits: { known: '', prepared: '' }, spellSlots: createBlankSpellSlots(), grimoireConfig: createDefaultGrimoireConfig(), conditions: [], sessionNotes: []
         });
 
         const legacyStorageKeys = {
@@ -364,7 +372,7 @@
             const suggestedRest = resource.recoveryRest || (resource.recovery === 'both' ? 'short' : resource.recovery === 'short' || resource.recovery === 'long' || resource.recovery === 'manual' ? resource.recovery : 'manual');
             return { ...resource, recoveryRest: suggestedRest === 'both' ? 'short' : suggestedRest, recoveryMode: ['full','fixed','half','manual'].includes(resource.recoveryMode) ? resource.recoveryMode : 'full', recoveryAmount: Number(resource.recoveryAmount) || 0 };
         };
-        const normalizeGrimoireData = (data) => ({ ...data, resources: Array.isArray(data.resources) ? data.resources.map(normalizeResource) : [], spells: Array.isArray(data.spells) ? data.spells.map(normalizeSpell) : [], grimoireConfig: { ...createDefaultGrimoireConfig(), ...(isRecord(data.grimoireConfig) ? data.grimoireConfig : {}), pactSlots: { ...createDefaultGrimoireConfig().pactSlots, ...(isRecord(data.grimoireConfig?.pactSlots) ? data.grimoireConfig.pactSlots : {}) } } });
+        const normalizeGrimoireData = (data) => ({ ...data, resources: Array.isArray(data.resources) ? data.resources.map(normalizeResource) : [], spells: Array.isArray(data.spells) ? data.spells.map(normalizeSpell) : [], conditions: Array.isArray(data.conditions) ? data.conditions : [], grimoireConfig: { ...createDefaultGrimoireConfig(), ...(isRecord(data.grimoireConfig) ? data.grimoireConfig : {}), pactSlots: { ...createDefaultGrimoireConfig().pactSlots, ...(isRecord(data.grimoireConfig?.pactSlots) ? data.grimoireConfig.pactSlots : {}) } } });
         const calculateRestPreview = (restType, characterData, spentHitDice = 0, manualHealing = 0) => {
             const data = normalizeGrimoireData(cloneData(characterData));
             const changes = [], unchanged = [];
@@ -673,6 +681,7 @@
             const [weapons, setWeapons] = useCharacterField(activeCharacter.data, updateActiveData, 'weapons');
             const [selectedWeaponId, setSelectedWeaponId] = useState('wp_soul');
             const [activeTab, setActiveTab] = useState("character");
+            const [combatMode, setCombatMode] = useState(false);
             const [tabTransition, setTabTransition] = useState({ phase: 'idle', pendingTab: null, direction: 'left', enterActive: false });
             const [isTransitioning, setIsTransitioning] = useState(false);
             const tabTransitionRef = useRef({ phase: 'idle', pendingTab: null, direction: 'left', enterActive: false });
@@ -691,6 +700,7 @@
             const [spellLimits, setSpellLimits] = useCharacterField(activeCharacter.data, updateActiveData, 'spellLimits');
             const [spellSlots, setSpellSlots] = useCharacterField(activeCharacter.data, updateActiveData, 'spellSlots');
             const [grimoireConfig, setGrimoireConfig] = useCharacterField(activeCharacter.data, updateActiveData, 'grimoireConfig');
+            const [conditions, setConditions] = useCharacterField(activeCharacter.data, updateActiveData, 'conditions');
             const [sessionNotes, setSessionNotes] = useCharacterField(activeCharacter.data, updateActiveData, 'sessionNotes');
             const [grimoireView, setGrimoireView] = useState('library');
             const [spellSearch, setSpellSearch] = useState('');
@@ -856,7 +866,7 @@
                 return 10 + totalMod;
             };
 
-            const calculateAC = () => {
+            const calculateBaseAC = () => {
                 const equippedArmor = armors.find(a => a.equipped && a.type !== 'shield');
                 const equippedShield = armors.find(a => a.equipped && a.type === 'shield');
                 
@@ -877,9 +887,10 @@
                     shieldBonus = Number(equippedShield.ac) || 2;
                 }
                 
-                const misc = Number(miscAc) || 0;
-                return baseAc + dexMod + shieldBonus + misc;
+                return baseAc + dexMod + shieldBonus;
             };
+
+            const calculateAC = () => calculateBaseAC() + (Number(miscAc) || 0);
 
             const isStealthDisadvantaged = armors.some(a => a.equipped && a.stealthDis);
 
@@ -1056,8 +1067,10 @@
             };
 
             const updateHpFromEvent = (e) => {
-                if (!hpBarRef.current) return;
-                const rect = hpBarRef.current.getBoundingClientRect();
+                const target = e.currentTarget || hpBarRef.current;
+                if (!target) return;
+                const rect = target.getBoundingClientRect();
+                if (!rect.width) return;
                 const clientX = e.clientX;
                 let percentage = (clientX - rect.left) / rect.width;
                 percentage = Math.max(0, Math.min(1, percentage));
@@ -1067,7 +1080,7 @@
 
             const handleHpPointerDown = (e) => {
                 setIsDraggingHp(true);
-                e.target.setPointerCapture(e.pointerId);
+                e.currentTarget.setPointerCapture(e.pointerId);
                 updateHpFromEvent(e);
             };
 
@@ -1079,7 +1092,7 @@
 
             const handleHpPointerUp = (e) => {
                 setIsDraggingHp(false);
-                e.target.releasePointerCapture(e.pointerId);
+                if (e.currentTarget.hasPointerCapture?.(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
             };
 
             const handleAddSubmit = () => {
@@ -1169,6 +1182,28 @@
             const preparedSpellCount = spells.filter(spell => spell.level > 0 && spell.prepared).length;
             const cantripCount = spells.filter(spell => spell.level === 0 && spell.known).length;
             const availableSpells = spells.filter(spell => spell.level === 0 || (grimoireConfig.usePrepared ? spell.prepared : grimoireConfig.useKnownLimit ? spell.known : true));
+            const tacticalWeapons = (() => {
+                const favorites = weapons.filter(weapon => weapon.favorite);
+                return favorites.length ? favorites : weapons.slice(0, 3);
+            })();
+            const tacticalSpells = (() => {
+                if (grimoireConfig.usePrepared) return spells.filter(spell => spell.prepared);
+                const favorites = spells.filter(spell => spell.favorite);
+                return favorites.length ? favorites : availableSpells.slice(0, 3);
+            })();
+            const tacticalResources = resources.filter(resource => Number(resource.max) > 0);
+            const combatConditions = ['Derribado', 'Envenenado', 'Asustado', 'Invisible', 'Paralizado', 'Hechizado', 'Agarrado'];
+            const renderAcTemporaryControls = () => (
+                <div className="mt-2 flex flex-col items-center gap-1 z-10">
+                    <span className="text-[10px] text-gray-400 whitespace-nowrap">Base {calculateBaseAC()} · Temporal {formatMod(Number(miscAc) || 0)}</span>
+                    <div className="flex items-center justify-center gap-1">
+                        <button type="button" aria-label="Reducir modificador temporal de CA" onClick={() => setMiscAc(String((Number(miscAc) || 0) - 1))} className="w-8 h-8 rounded border border-gray-600 bg-gray-800 text-gray-200 hover:border-purple-400">−</button>
+                        <input aria-label="Modificador temporal de CA" type="number" value={miscAc} onChange={e => setMiscAc(handleNumInput(e.target.value))} className="w-12 h-8 rounded border border-gray-600 bg-gray-950 text-center text-sm font-bold text-white outline-none focus:border-purple-500" />
+                        <button type="button" aria-label="Aumentar modificador temporal de CA" onClick={() => setMiscAc(String((Number(miscAc) || 0) + 1))} className="w-8 h-8 rounded border border-gray-600 bg-gray-800 text-gray-200 hover:border-purple-400">+</button>
+                    </div>
+                    <button type="button" disabled={(Number(miscAc) || 0) === 0} onClick={() => { if ((Number(miscAc) || 0) !== 0) setMiscAc('0'); }} className="text-[10px] text-purple-300 hover:text-white disabled:text-gray-600 disabled:cursor-not-allowed">Reiniciar</button>
+                </div>
+            );
             const displayedSpells = (grimoireView === 'available' ? availableSpells : spells).filter(spell => {
                 const query = spell.name.toLowerCase().includes(spellSearch.toLowerCase());
                 const filter = spellFilter === 'all' || (spellFilter === 'cantrip' && spell.level === 0) || (spellFilter === 'prepared' && spell.prepared) || (spellFilter === 'ritual' && spell.ritual) || (spellFilter === 'concentration' && spell.concentration) || (spellFilter === 'favorite' && spell.favorite) || Number(spellFilter) === spell.level;
@@ -1179,13 +1214,87 @@
                 <div className="app-shell h-[100dvh] overflow-hidden p-2 pb-20 md:p-6 md:pb-24 text-gray-200">
                     <div className="app-frame max-w-5xl h-full mx-auto flex flex-col gap-4">
                         
-                        <main ref={tabScrollRef} data-active-tab={activeTab} data-transition-direction={transitionDirection} onScroll={() => { if (tabScrollRef.current) tabScrollPositions.current[activeTab] = tabScrollRef.current.scrollTop; }} onTouchStart={handleTabTouchStart} onTouchEnd={handleTabTouchEnd} onTouchCancel={() => { tabTouchStart.current = null; }} className="tab-viewport flex-1 min-h-0 overflow-y-auto pr-1 pb-4 space-y-6">
+                        <main ref={tabScrollRef} data-active-tab={activeTab} data-combat-mode={combatMode ? 'true' : 'false'} data-transition-direction={transitionDirection} onScroll={() => { if (tabScrollRef.current) tabScrollPositions.current[activeTab] = tabScrollRef.current.scrollTop; }} onTouchStart={handleTabTouchStart} onTouchEnd={handleTabTouchEnd} onTouchCancel={() => { tabTouchStart.current = null; }} className="tab-viewport flex-1 min-h-0 overflow-y-auto pr-1 pb-4 space-y-6">
                         <div
                             data-direction={transitionDirection}
                             onAnimationEnd={handleTabTransitionEnd}
                             onTransitionEnd={handleTabTransitionEnd}
                             className={`tab-content-wrapper ${transitionPhase === 'exit' ? 'is-exiting' : transitionPhase === 'enter' ? `is-entering ${isEnterActive ? 'is-enter-active' : ''}` : ''}`}
                         >
+                        <div data-tab="combat" className="combat-mode-panel tab-section space-y-4">
+                            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-purple-900/70 pb-3">
+                                <div className="min-w-0">
+                                    <p className="font-fantasy text-xs uppercase tracking-widest text-red-300">Modo Combate</p>
+                                    <h1 className="font-fantasy text-xl font-bold text-white truncate">{charInfo.name || 'Personaje sin nombre'}</h1>
+                                    <p className="text-sm text-purple-300 truncate">{charInfo.cls || 'Clase sin definir'} · Nivel {level || '1'}</p>
+                                </div>
+                                <button type="button" onClick={() => setCombatMode(false)} className="min-h-11 px-4 py-2 rounded border border-red-700 bg-red-950/40 text-red-100 hover:bg-red-900 text-xs font-fantasy uppercase tracking-wider">
+                                    &#10005; Salir del combate
+                                </button>
+                            </div>
+
+                            <div className="combat-mode-grid">
+                                <section className="combat-mode-primary rpg-panel p-4">
+                                    <div className="flex flex-wrap items-end justify-between gap-3 mb-3">
+                                        <span className="font-fantasy text-red-400 text-sm font-bold uppercase tracking-widest">Vida</span>
+                                        <div className="flex items-center gap-1 font-sans">
+                                            <input aria-label="Vida actual" type="number" value={hp.current} onChange={e => setHp(p => ({ ...p, current: handleNumInput(e.target.value) }))} className="w-16 bg-transparent text-right text-3xl font-bold text-white outline-none" />
+                                            <span className="text-gray-500 text-xl">/</span>
+                                            <input aria-label="Vida maxima" type="number" value={hp.max} onChange={e => setHp(p => ({ ...p, max: handleNumInput(e.target.value) }))} className="w-14 bg-transparent text-left text-xl text-gray-300 outline-none border-b border-gray-700 focus:border-red-500" />
+                                        </div>
+                                    </div>
+                                    <div className="health-bar-container" data-no-tab-swipe onPointerDown={handleHpPointerDown} onPointerMove={handleHpPointerMove} onPointerUp={handleHpPointerUp} onPointerCancel={handleHpPointerUp}>
+                                        <div className="glass-overlay"></div>
+                                        <div className="absolute left-0 top-0 h-full bg-gradient-to-r from-red-800 to-red-500 transition-all duration-75" style={{ width: `${hpPercent}%` }}></div>
+                                        {tmpHp > 0 && <div className="absolute left-0 top-0 h-full bg-gradient-to-r from-cyan-600 to-cyan-300 opacity-80 transition-all duration-300 border-r border-white shadow-[0_0_8px_#22d3ee] pointer-events-none" style={{ width: `${tempHpPercent}%` }}></div>}
+                                    </div>
+                                    <label className="mt-3 flex items-center justify-between gap-3 text-xs font-fantasy uppercase tracking-wider text-cyan-300">
+                                        Vida temporal
+                                        <input aria-label="Vida temporal" type="number" value={hp.temp || ''} placeholder="0" onChange={e => setHp(p => ({ ...p, temp: handleNumInput(e.target.value) }))} className="w-16 rounded border border-cyan-800 bg-gray-950 px-2 py-2 text-center font-sans font-bold text-cyan-200 outline-none focus:border-cyan-400" />
+                                    </label>
+                                </section>
+
+                                <section className="rpg-panel p-4">
+                                    <h2 className="font-fantasy text-sm font-bold uppercase tracking-widest text-purple-300 mb-3">Defensas</h2>
+                                    <div className="combat-mode-stat-grid text-center">
+                                        <div className="col-span-2 rounded border border-gray-700 bg-gray-900/70 p-2"><span className="block text-[10px] uppercase tracking-wider text-gray-400">CA</span><strong className="text-3xl text-white">{calculateAC()}</strong>{renderAcTemporaryControls()}</div>
+                                        <div className="rounded border border-gray-700 bg-gray-900/70 p-2"><span className="block text-[10px] uppercase tracking-wider text-gray-400">Iniciativa</span><strong className="text-2xl text-white">{formatMod(getModNum(stats.des) + (Number(initBonus) || 0))}</strong></div>
+                                        <div className="rounded border border-gray-700 bg-gray-900/70 p-2"><span className="block text-[10px] uppercase tracking-wider text-gray-400">Velocidad</span><strong className="text-2xl text-white">{speed || '0'}</strong></div>
+                                        <div className="rounded border border-gray-700 bg-gray-900/70 p-2"><span className="block text-[10px] uppercase tracking-wider text-gray-400">Percepcion</span><strong className="text-2xl text-white">{getPassivePerception()}</strong></div>
+                                    </div>
+                                </section>
+
+                                <section className="rpg-panel p-4 flex items-center justify-between gap-4">
+                                    <div><h2 className="font-fantasy text-sm font-bold uppercase tracking-widest text-yellow-300">Inspiracion</h2><p className={`mt-1 text-xs font-bold ${inspiration ? 'text-yellow-200' : 'text-gray-500'}`}>{inspiration ? 'Disponible' : 'Gastada'}</p></div>
+                                    <button onClick={() => setInspiration(!inspiration)} className={`w-14 h-14 shrink-0 rounded-full transition-all duration-300 flex items-center justify-center border-2 ${inspiration ? 'bg-gradient-to-br from-yellow-300 to-yellow-600 border-yellow-200 animate-pulse-glow text-yellow-900' : 'bg-gray-800 border-gray-600 text-gray-500 hover:border-yellow-600 hover:text-yellow-500'}`} title="Gastala antes de tirar para obtener ventaja en un ataque, prueba o salvacion." aria-label={`Inspiracion ${inspiration ? 'disponible' : 'gastada'}`}><svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="currentColor" viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279-7.416-3.967-7.417 3.967 1.481-8.279-6.064-5.828 8.332-1.151z"/></svg></button>
+                                </section>
+
+                                <section className="rpg-panel p-4">
+                                    <h2 className="font-fantasy text-sm font-bold uppercase tracking-widest text-purple-300 mb-3">Recursos</h2>
+                                    <div className="combat-mode-list">
+                                        {tacticalResources.map((resource, index) => <div key={resource.id} className="flex items-center justify-between gap-3 rounded border border-gray-700 bg-gray-900/70 p-2"><span className="min-w-0 text-sm font-semibold text-gray-100 truncate">{resource.name}</span><div className="flex items-center gap-2 shrink-0"><button aria-label={`Reducir ${resource.name}`} onClick={() => setResources(previous => previous.map((item, itemIndex) => itemIndex === index ? { ...item, current: Math.max(0, Number(item.current) - 1) } : item))} className="w-10 h-10 rounded border border-gray-600 bg-gray-800 text-lg text-gray-200">-</button><span className="w-12 text-center font-bold text-white">{resource.current}/{resource.max}</span><button aria-label={`Aumentar ${resource.name}`} onClick={() => setResources(previous => previous.map((item, itemIndex) => itemIndex === index ? { ...item, current: Math.min(Number(item.max), Number(item.current) + 1) } : item))} className="w-10 h-10 rounded border border-gray-600 bg-gray-800 text-lg text-gray-200">+</button></div></div>)}
+                                        {grimoireConfig.usePactMagic && Number(grimoireConfig.pactSlots.max) > 0 && <div className="flex items-center justify-between gap-3 rounded border border-yellow-800/70 bg-yellow-950/20 p-2"><span className="text-sm font-semibold text-yellow-100">Magia de pacto (N{grimoireConfig.pactSlots.level})</span><span className="font-bold text-yellow-200">{grimoireConfig.pactSlots.current}/{grimoireConfig.pactSlots.max}</span></div>}
+                                        {!tacticalResources.length && !(grimoireConfig.usePactMagic && Number(grimoireConfig.pactSlots.max) > 0) && <p className="text-sm text-gray-500">No hay recursos de combate configurados.</p>}
+                                    </div>
+                                </section>
+
+                                <section className="rpg-panel p-4">
+                                    <h2 className="font-fantasy text-sm font-bold uppercase tracking-widest text-purple-300 mb-3">Armas</h2>
+                                    <div className="combat-mode-list">{tacticalWeapons.length ? tacticalWeapons.map(weapon => <div key={weapon.id} className="rounded border border-gray-700 bg-gray-900/70 p-2"><strong className="block text-sm text-white">{weapon.name}</strong>{weapon.attacks?.slice(0, 2).map((attack, index) => <div key={`${weapon.id}-${index}`} className="mt-1 flex justify-between gap-3 text-xs"><span className="truncate text-gray-300">{attack.name}</span><span className="shrink-0 text-green-300">{attack.atk || '-'}</span><span className="shrink-0 text-red-300">{attack.dmg || '-'}</span></div>)}</div>) : <p className="text-sm text-gray-500">No hay armas configuradas.</p>}</div>
+                                </section>
+
+                                <section className="rpg-panel p-4">
+                                    <h2 className="font-fantasy text-sm font-bold uppercase tracking-widest text-fuchsia-300 mb-3">Conjuros</h2>
+                                    <div className="combat-mode-list">{tacticalSpells.length ? tacticalSpells.map(spell => <button key={spell.id} onClick={() => setCastSpell(spell)} className="min-h-11 flex items-center justify-between gap-3 rounded border border-fuchsia-900 bg-gray-900/70 px-3 py-2 text-left hover:border-fuchsia-500"><span className="truncate font-semibold text-gray-100">{spell.name}</span><span className="shrink-0 text-xs text-fuchsia-300">{spell.level === 0 ? 'Truco' : `N${spell.level}`}</span></button>) : <p className="text-sm text-gray-500">No hay conjuros disponibles.</p>}</div>
+                                </section>
+
+                                <section className="rpg-panel p-4">
+                                    <h2 className="font-fantasy text-sm font-bold uppercase tracking-widest text-purple-300 mb-3">Condiciones</h2>
+                                    <div className="flex flex-wrap gap-2">{combatConditions.map(condition => <button key={condition} onClick={() => setConditions(previous => previous.includes(condition) ? previous.filter(item => item !== condition) : [...previous, condition])} className={`min-h-10 px-3 rounded border text-xs font-semibold transition-colors ${conditions.includes(condition) ? 'border-red-400 bg-red-950/70 text-red-100' : 'border-gray-700 bg-gray-900/70 text-gray-300 hover:border-purple-500'}`}>{condition}</button>)}</div>
+                                </section>
+                            </div>
+                        </div>
+
                         <div data-tab="combat" className="tab-section space-y-6">
                         {/* TOP BAR: STATS PRINCIPALES (BARRA DE VIDA, CA, ETC) */}
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
@@ -1220,7 +1329,7 @@
 
                                 {/* Vida Temporal Input */}
                                 <div className="mt-2 flex items-center justify-between z-10">
-                                    <span className="font-fantasy text-cyan-400 text-[10px] font-bold tracking-widest uppercase">Escudo Temp.</span>
+                                    <span className="font-fantasy text-cyan-400 text-[10px] font-bold tracking-widest uppercase">Vida Temporal</span>
                                     <div className="flex items-center bg-gray-900/80 rounded-full border border-cyan-800/50 px-2 py-0.5">
                                         <button onClick={() => setHp(p => ({ ...p, temp: String(Math.max(0, (Number(p.temp)||0) - 1)) }))} className="text-gray-500 hover:text-cyan-400 px-1">-</button>
                                         <input type="number" value={hp.temp || ""} placeholder="0" onChange={e => setHp(p => ({ ...p, temp: handleNumInput(e.target.value) }))} className="w-8 bg-transparent text-center text-sm font-bold text-cyan-300 outline-none" />
@@ -1247,13 +1356,11 @@
                             </div>
 
                             {/* CA Calculada */}
-                            <div className="rpg-panel p-3 flex flex-col items-center justify-center relative group cursor-default">
+                            <div className="rpg-panel p-3 flex flex-col items-center justify-center relative">
                                 <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJyZ2JhKDE2OCwgODUsIDI0NywgMC4xNSkiIHN0cm9rZS13aWR0aD0iMiI+PHBhdGggZD0iTTEyIDIyczgtNCA4LTEwVjVsLTgtMy04IDN2N2MwIDYgOCAxMCA4IDEweiIvPjwvc3ZnPg==')] bg-center bg-no-repeat bg-contain opacity-50"></div>
                                 <span className="font-fantasy text-purple-400 text-[10px] md:text-xs font-bold uppercase tracking-widest mb-1 z-10 text-center">Armadura</span>
                                 <span className="text-4xl font-bold text-white z-10 drop-shadow-md">{calculateAC()}</span>
-                                <div className="absolute opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 text-gray-300 text-[10px] p-2 rounded-lg -bottom-10 whitespace-nowrap z-20 border border-gray-600 shadow-lg pointer-events-none">
-                                    Base + Des + Escudo + Misc
-                                </div>
+                                {renderAcTemporaryControls()}
                             </div>
 
                             {/* Iniciativa y Percepción (Columna apilada) */}
@@ -1286,6 +1393,12 @@
                                 <span className="sr-only">Gástala antes de tirar para obtener ventaja en un ataque, prueba o salvación.</span>
                             </div>
 
+                        </div>
+
+                        <div className="flex justify-end">
+                            <button type="button" onClick={() => setCombatMode(true)} className="min-h-11 px-4 py-2 rounded border border-red-700 bg-red-950/40 text-red-100 hover:bg-red-900 transition-colors text-xs font-fantasy uppercase tracking-wider shadow-md">
+                                &#9876; Modo Combate
+                            </button>
                         </div>
 
                         </div>
@@ -1533,12 +1646,6 @@
                                             <button onClick={() => setAddModal({isOpen: true, type: 'tool', data: {}})} className="text-[10px] font-fantasy uppercase tracking-wider bg-gray-800 border border-gray-600 hover:border-purple-500 hover:text-white px-2 py-1 rounded transition-colors shadow-md">+ Utilidad</button>
                                         </div>
                                     </div>
-                                    
-                                    <div className="mb-4 flex items-center text-[11px] text-gray-400 bg-gray-900/50 border border-gray-800 p-2 rounded shadow-inner">
-                                        <span className="uppercase tracking-wider font-fantasy">Modificador Mágico a CA: </span>
-                                        <input type="number" value={miscAc} onChange={e => setMiscAc(handleNumInput(e.target.value))} className="w-12 bg-gray-800 text-white rounded text-center ml-2 outline-none focus:border-purple-500 border border-gray-600 font-bold" />
-                                    </div>
-
                                     {/* Lista de Armaduras y Escudos */}
                                     <div className="space-y-2 mb-6">
                                         {armors.map(arm => (
