@@ -277,6 +277,7 @@
         const createCharacterId = () => window.crypto?.randomUUID?.() || `character_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         const cloneData = (value) => JSON.parse(JSON.stringify(value));
         const createBlankSpellSlots = () => Object.fromEntries([1, 2, 3, 4, 5, 6, 7, 8, 9].map(level => [level, { current: 0, max: 0 }]));
+        const createDefaultGrimoireConfig = () => ({ useKnownLimit: false, knownLimit: '', usePrepared: false, preparedLimit: '', useCantripLimit: false, cantripLimit: '', usePactMagic: false, pactSlots: { current: 0, max: 0, level: 1 } });
 
         const createBlankCharacterData = () => ({
             charInfo: { name: '', race: '', cls: '' }, level: '1', inspiration: false,
@@ -285,7 +286,7 @@
             stats: { fue: '', des: '', con: '', int: '', sab: '', car: '' }, savingThrows: [],
             proficiencies: { expertise: [], proficient: [] }, resources: [], currency: { po: '0', pp: '0', pc: '0' },
             inventory: [], armors: [], tools: [], miscAc: '0', weapons: [], traits: [], feats: [],
-            spells: [], spellLimits: { known: '', prepared: '' }, spellSlots: createBlankSpellSlots(), sessionNotes: []
+            spells: [], spellLimits: { known: '', prepared: '' }, spellSlots: createBlankSpellSlots(), grimoireConfig: createDefaultGrimoireConfig(), sessionNotes: []
         });
 
         const legacyStorageKeys = {
@@ -358,6 +359,40 @@
         };
 
         const isRecord = (value) => value && typeof value === 'object' && !Array.isArray(value);
+        const normalizeSpell = (spell) => ({ id: spell.id || `sp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, name: spell.name || '', level: Math.max(0, Math.min(9, Number(spell.level) || 0)), school: spell.school || '', castingTime: spell.castingTime || '', duration: spell.duration || '', range: spell.range || '', areaShape: spell.areaShape || (spell.shape && spell.shape !== '-' ? spell.shape : 'ninguna'), areaSize: spell.areaSize || spell.size || '', length: spell.length || '', width: spell.width || '', customArea: spell.customArea || '', compV: !!spell.compV, compS: !!spell.compS, compM: !!spell.compM, compMDesc: spell.compMDesc || '', concentration: !!spell.concentration, ritual: !!spell.ritual, attackBonus: spell.attackBonus || '', savingThrow: !!spell.savingThrow, savingAbility: spell.savingAbility || '', damageHealing: spell.damageHealing || '', description: spell.description || '', notes: spell.notes || '', known: spell.known !== false, prepared: Number(spell.level) === 0 ? false : !!spell.prepared, favorite: !!spell.favorite });
+        const normalizeResource = (resource) => {
+            const suggestedRest = resource.recoveryRest || (resource.recovery === 'both' ? 'short' : resource.recovery === 'short' || resource.recovery === 'long' || resource.recovery === 'manual' ? resource.recovery : 'manual');
+            return { ...resource, recoveryRest: suggestedRest === 'both' ? 'short' : suggestedRest, recoveryMode: ['full','fixed','half','manual'].includes(resource.recoveryMode) ? resource.recoveryMode : 'full', recoveryAmount: Number(resource.recoveryAmount) || 0 };
+        };
+        const normalizeGrimoireData = (data) => ({ ...data, resources: Array.isArray(data.resources) ? data.resources.map(normalizeResource) : [], spells: Array.isArray(data.spells) ? data.spells.map(normalizeSpell) : [], grimoireConfig: { ...createDefaultGrimoireConfig(), ...(isRecord(data.grimoireConfig) ? data.grimoireConfig : {}), pactSlots: { ...createDefaultGrimoireConfig().pactSlots, ...(isRecord(data.grimoireConfig?.pactSlots) ? data.grimoireConfig.pactSlots : {}) } } });
+        const calculateRestPreview = (restType, characterData, spentHitDice = 0, manualHealing = 0) => {
+            const data = normalizeGrimoireData(cloneData(characterData));
+            const changes = [], unchanged = [];
+            const recoverResource = resource => {
+                const eligible = restType === 'long' ? ['short','long'].includes(resource.recoveryRest) : resource.recoveryRest === 'short';
+                if (!eligible || resource.recoveryMode === 'manual') { unchanged.push(resource.name); return resource; }
+                const max = Number(resource.max) || 0, current = Number(resource.current) || 0;
+                const gain = resource.recoveryMode === 'fixed' ? Number(resource.recoveryAmount) || 0 : resource.recoveryMode === 'half' ? (max > 0 ? Math.max(1, Math.floor(max / 2)) : 0) : max;
+                const next = Math.min(max, resource.recoveryMode === 'full' ? max : current + gain);
+                if (next !== current) changes.push(`${resource.name}: ${current}/${max} -> ${next}/${max}`); else unchanged.push(resource.name);
+                return { ...resource, current: next };
+            };
+            data.resources = data.resources.map(recoverResource);
+            const hpMax = Number(data.hp?.max), hpCurrent = Number(data.hp?.current) || 0, availableDice = Math.max(0, Number(data.hitDice?.current) || 0);
+            if (restType === 'short') {
+                const spent = Math.min(availableDice, Math.max(0, Number(spentHitDice) || 0));
+                const healing = spent > 0 && Number.isFinite(hpMax) ? Math.max(0, Number(manualHealing) || 0) : 0;
+                if (spent) { data.hitDice = { ...data.hitDice, current: String(availableDice - spent) }; changes.push(`Dados de golpe: ${availableDice} -> ${availableDice - spent}`); }
+                if (healing && Number.isFinite(hpMax)) { const nextHp = Math.min(hpMax, hpCurrent + healing); data.hp = { ...data.hp, current: String(nextHp) }; changes.push(`Vida: ${hpCurrent}/${hpMax} -> ${nextHp}/${hpMax}`); }
+                if (data.grimoireConfig.usePactMagic) { const pact = data.grimoireConfig.pactSlots, next = Number(pact.max) || 0; if (Number(pact.current) !== next) { data.grimoireConfig.pactSlots = { ...pact, current: next }; changes.push(`Magia de pacto: ${pact.current}/${pact.max} -> ${next}/${pact.max}`); } }
+            } else {
+                if (Number.isFinite(hpMax)) { data.hp = { ...data.hp, current: String(hpMax) }; if (hpCurrent !== hpMax) changes.push(`Vida: ${hpCurrent}/${hpMax} -> ${hpMax}/${hpMax}`); }
+                const totalDice = Math.max(0, Number(data.level) || 0), recovered = totalDice > 0 ? Math.max(1, Math.floor(totalDice / 2)) : 0, nextDice = Math.min(totalDice, availableDice + recovered); data.hitDice = { ...data.hitDice, current: String(nextDice) }; if (nextDice !== availableDice) changes.push(`Dados de golpe: ${availableDice} -> ${nextDice}`);
+                data.spellSlots = Object.fromEntries(Object.entries(data.spellSlots).map(([level, slot]) => { const next = Number(slot.max) || 0; if (Number(slot.current) !== next) changes.push(`Ranura nivel ${level}: ${slot.current}/${slot.max} -> ${next}/${slot.max}`); return [level, { ...slot, current: next }]; }));
+                if (data.grimoireConfig.usePactMagic) data.grimoireConfig.pactSlots = { ...data.grimoireConfig.pactSlots, current: Number(data.grimoireConfig.pactSlots.max) || 0 };
+            }
+            return { data, changes, unchanged };
+        };
         const isValidPortraitDataUrl = (value) => typeof value === 'string' && value.length <= MAX_PORTRAIT_DATA_URL_LENGTH && /^data:image\/(?:png|jpeg|webp);base64,[a-z0-9+/]+={0,2}$/i.test(value);
         const hasCharacterDataShape = (data) => {
             const objectFields = ['charInfo', 'hp', 'hitDice', 'deathSaves', 'stats', 'proficiencies', 'currency', 'spellLimits', 'spellSlots'];
@@ -395,7 +430,7 @@
             ['savingThrows', 'resources', 'inventory', 'armors', 'tools', 'weapons', 'traits', 'feats', 'spells', 'sessionNotes'].forEach(field => {
                 data[field] = Array.isArray(rawData[field]) ? rawData[field] : defaults[field];
             });
-            return data;
+            return normalizeGrimoireData(data);
         };
         const createUniqueCharacterRecord = (data, name, portrait, characters = {}) => {
             let record;
@@ -490,7 +525,7 @@
                         updatedAt: typeof character.meta.updatedAt === 'string' ? character.meta.updatedAt : now,
                         portrait: isValidPortraitDataUrl(character.meta.portrait) ? character.meta.portrait : ''
                     },
-                    data: character.data
+                    data: normalizeGrimoireData(character.data)
                 };
                 return validCharacters;
             }, {});
@@ -549,7 +584,7 @@
                     const source = previous.characters[id];
                     if (!source) return previous;
                     const copyName = `${source.meta.name || 'Personaje'} (copia)`;
-                    const copyData = cloneData(source.data);
+                    const copyData = normalizeGrimoireData(cloneData(source.data));
                     copyData.charInfo = { ...copyData.charInfo, name: copyName };
                     const record = createUniqueCharacterRecord(copyData, copyName, source.meta.portrait || '', previous.characters);
                     return { ...previous, activeCharacterId: record.meta.id, characters: { ...previous.characters, [record.meta.id]: record } };
@@ -566,7 +601,7 @@
                         name = `${baseName} (${copyNumber})`;
                         copyNumber += 1;
                     }
-                    const data = cloneData(character.data);
+                    const data = normalizeGrimoireData(cloneData(character.data));
                     data.charInfo = { ...data.charInfo, name };
                     const record = createUniqueCharacterRecord(data, name, character.meta.portrait || '', previous.characters);
                     return { ...previous, activeCharacterId: record.meta.id, characters: { ...previous.characters, [record.meta.id]: record } };
@@ -655,13 +690,26 @@
             const [spells, setSpells] = useCharacterField(activeCharacter.data, updateActiveData, 'spells');
             const [spellLimits, setSpellLimits] = useCharacterField(activeCharacter.data, updateActiveData, 'spellLimits');
             const [spellSlots, setSpellSlots] = useCharacterField(activeCharacter.data, updateActiveData, 'spellSlots');
+            const [grimoireConfig, setGrimoireConfig] = useCharacterField(activeCharacter.data, updateActiveData, 'grimoireConfig');
             const [sessionNotes, setSessionNotes] = useCharacterField(activeCharacter.data, updateActiveData, 'sessionNotes');
+            const [grimoireView, setGrimoireView] = useState('library');
+            const [spellSearch, setSpellSearch] = useState('');
+            const [spellFilter, setSpellFilter] = useState('all');
+            const [castSpell, setCastSpell] = useState(null);
+            const [grimoireSettingsOpen, setGrimoireSettingsOpen] = useState(false);
+            const [showEmptySlots, setShowEmptySlots] = useState(false);
+            const [editingSlotLevel, setEditingSlotLevel] = useState(null);
+            const [restModalOpen, setRestModalOpen] = useState(false);
+            const [restType, setRestType] = useState(null);
+            const [restSpentDice, setRestSpentDice] = useState(0);
+            const [restHealing, setRestHealing] = useState(0);
 
             // ESTADOS PARA MODALES
             const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, message: "", onConfirm: null, isAlert: false });
             const [skillModal, setSkillModal] = useState({ isOpen: false, skillKey: null, skillName: "" });
             const [addModal, setAddModal] = useState({ isOpen: false, type: null, data: {} }); 
             const [notesModalOpen, setNotesModalOpen] = useState(false);
+            const [diaryOpen, setDiaryOpen] = useState(false);
             const [characterManagerOpen, setCharacterManagerOpen] = useState(false);
             const [pendingImport, setPendingImport] = useState(null);
             const importFileRef = useRef(null);
@@ -1052,28 +1100,43 @@
                     ));
                 }
                 if (type === 'resource' && data.name) {
-                    setResources([...resources, { id: 'res_' + Date.now(), name: data.name, current: Number(data.max)||0, max: Number(data.max)||0, type: data.dice || '' }]);
+                    setResources([...resources, { id: 'res_' + Date.now(), name: data.name, current: Number(data.max)||0, max: Number(data.max)||0, type: data.dice || '', recoveryRest: data.recoveryRest || 'manual', recoveryMode: data.recoveryMode || 'full', recoveryAmount: Number(data.recoveryAmount) || 0 }]);
                 }
                 if (type === 'spell' && data.name) {
-                    setSpells([...spells, { 
-                        id: 'sp_' + Date.now(), name: data.name, level: Number(data.level)||1, range: data.range || '-', shape: data.shape || '-', size: data.size || '-',
-                        compV: data.compV || false, compS: data.compS || false, compM: data.compM || false, compMDesc: data.compMDesc || '',
-                        prepared: false, notes: data.notes 
-                    }]);
+                    const level = Math.max(0, Math.min(9, Number(data.level)));
+                    const knownCount = spells.filter(spell => spell.level > 0 && spell.known).length;
+                    const cantripCount = spells.filter(spell => spell.level === 0 && spell.known).length;
+                    if ((level === 0 && grimoireConfig.useCantripLimit && cantripCount >= (Number(grimoireConfig.cantripLimit) || 0)) || (level > 0 && grimoireConfig.useKnownLimit && knownCount >= (Number(grimoireConfig.knownLimit) || 0))) {
+                        showAlert('Has alcanzado el límite configurado para ese tipo de conjuro.');
+                    } else setSpells([...spells, normalizeSpell({ ...data, id: 'sp_' + Date.now(), level, known: true, prepared: false })]);
                 }
                 setAddModal({ isOpen: false, type: null, data: {} });
             };
 
             const toggleSpellPreparation = (sp) => {
+                if (!grimoireConfig.usePrepared || sp.level === 0) return;
                 if (!sp.prepared) {
-                    const maxPrep = Number(spellLimits.prepared) || 0;
-                    const currentPrep = spells.filter(s => s.prepared).length;
-                    if (maxPrep > 0 && currentPrep >= maxPrep) {
+                    const maxPrep = Number(grimoireConfig.preparedLimit) || 0;
+                    const currentPrep = spells.filter(s => s.level > 0 && s.prepared).length;
+                    if (currentPrep >= maxPrep) {
                         showAlert(`Has alcanzado tu límite máximo de ${maxPrep} hechizos preparados.`);
                         return;
                     }
                 }
                 setSpells(spells.map(s => s.id === sp.id ? {...s, prepared: !s.prepared} : s));
+            };
+            const toggleSpellKnown = (sp) => {
+                if (sp.level === 0 || !grimoireConfig.useKnownLimit) return;
+                if (!sp.known && knownSpellCount >= (Number(grimoireConfig.knownLimit) || 0)) { showAlert('Has alcanzado el límite de conjuros conocidos.'); return; }
+                setSpells(spells.map(item => item.id === sp.id ? { ...item, known: !item.known, prepared: item.known ? false : item.prepared } : item));
+            };
+
+            const castWithSlot = (slotLevel, pact = false) => {
+                if (!castSpell) return;
+                if (castSpell.level === 0) { setCastSpell(null); return; }
+                if (pact) setGrimoireConfig(prev => ({ ...prev, pactSlots: { ...prev.pactSlots, current: Math.max(0, Number(prev.pactSlots.current) - 1) } }));
+                else setSpellSlots(prev => ({ ...prev, [slotLevel]: { ...prev[slotLevel], current: Math.max(0, Number(prev[slotLevel].current) - 1) } }));
+                setCastSpell(null);
             };
 
             // Cálculos para la barra de vida de videojuego
@@ -1095,6 +1158,22 @@
                 { key: 'religion', name: 'Religión', stat: 'int' }, { key: 'sigilo', name: 'Sigilo', stat: 'des' },
                 { key: 'supervivencia', name: 'Supervivencia', stat: 'sab' }, { key: 'trato_con_animales', name: 'Trato con Animales', stat: 'sab' },
             ];
+            useEffect(() => { setRestModalOpen(false); setRestType(null); }, [manager.activeCharacterId]);
+            const restPreview = restType ? calculateRestPreview(restType, activeCharacter.data, restSpentDice, restHealing) : null;
+            const confirmRest = () => {
+                if (!restPreview) return;
+                updateActiveData(restPreview.data);
+                setRestModalOpen(false); setRestType(null); setRestSpentDice(0); setRestHealing(0);
+            };
+            const knownSpellCount = spells.filter(spell => spell.level > 0 && spell.known).length;
+            const preparedSpellCount = spells.filter(spell => spell.level > 0 && spell.prepared).length;
+            const cantripCount = spells.filter(spell => spell.level === 0 && spell.known).length;
+            const availableSpells = spells.filter(spell => spell.level === 0 || (grimoireConfig.usePrepared ? spell.prepared : grimoireConfig.useKnownLimit ? spell.known : true));
+            const displayedSpells = (grimoireView === 'available' ? availableSpells : spells).filter(spell => {
+                const query = spell.name.toLowerCase().includes(spellSearch.toLowerCase());
+                const filter = spellFilter === 'all' || (spellFilter === 'cantrip' && spell.level === 0) || (spellFilter === 'prepared' && spell.prepared) || (spellFilter === 'ritual' && spell.ritual) || (spellFilter === 'concentration' && spell.concentration) || (spellFilter === 'favorite' && spell.favorite) || Number(spellFilter) === spell.level;
+                return query && filter;
+            }).slice().sort((a, b) => a.level - b.level || a.name.localeCompare(b.name));
 
             return (
                 <div className="app-shell h-[100dvh] overflow-hidden p-2 pb-20 md:p-6 md:pb-24 text-gray-200">
@@ -1243,6 +1322,10 @@
                                     Cambiar personaje
                                 </button>
                             </div>
+                        </div>
+
+                        <div data-tab="character" className="tab-section flex justify-end">
+                            <button type="button" onClick={() => { setRestModalOpen(true); setRestType(null); }} className="min-h-10 px-3 py-2 rounded border border-cyan-700 bg-cyan-950/30 text-cyan-100 text-xs font-fantasy uppercase">Descansar</button>
                         </div>
 
                         {/* Velocidad y Tamaño */}
@@ -1584,50 +1667,33 @@
                                     <div className="grimoire-toolbar flex flex-wrap justify-between items-center mb-4 rpg-panel-header !border-l-fuchsia-500 pb-3 px-4 gap-4">
                                         <h2 className="text-lg md:text-xl font-fantasy font-bold text-fuchsia-400 tracking-widest uppercase whitespace-nowrap">Libro de Conjuros</h2>
                                         
-                                        {/* Alineación arreglada para los contadores y botón */}
                                         <div className="grimoire-summary flex gap-4 items-center flex-wrap flex-1 justify-end">
-                                            <div className="flex items-center text-[10px] text-gray-400 bg-gray-900 border border-gray-700 px-3 py-1.5 rounded font-fantasy uppercase tracking-wider shadow-inner">
-                                                <span className="mr-2">Conocidos:</span>
-                                                <span className="text-fuchsia-300 font-bold text-sm font-sans mr-1">{spells.length}</span> /
-                                                <input type="number" value={spellLimits.known} onChange={e => setSpellLimits({...spellLimits, known: handleNumInput(e.target.value)})} className="w-8 bg-transparent text-center text-white outline-none focus:border-b focus:border-fuchsia-500 font-sans ml-1" placeholder="-" />
-                                            </div>
-                                            <div className="flex items-center text-[10px] text-gray-400 bg-gray-900 border border-gray-700 px-3 py-1.5 rounded font-fantasy uppercase tracking-wider shadow-inner">
-                                                <span className="mr-2">Preparados:</span>
-                                                <span className="text-fuchsia-300 font-bold text-sm font-sans mr-1">{spells.filter(s=>s.prepared).length}</span> /
-                                                <input type="number" value={spellLimits.prepared} onChange={e => setSpellLimits({...spellLimits, prepared: handleNumInput(e.target.value)})} className="w-8 bg-transparent text-center text-white outline-none focus:border-b focus:border-fuchsia-500 font-sans ml-1" placeholder="-" />
-                                            </div>
+                                            {grimoireConfig.useCantripLimit && <span className="text-xs text-fuchsia-200">Trucos {cantripCount}/{grimoireConfig.cantripLimit || 0}</span>}
+                                            {grimoireConfig.useKnownLimit && <span className="text-xs text-fuchsia-200">Conocidos {knownSpellCount}/{grimoireConfig.knownLimit || 0}</span>}
+                                            {grimoireConfig.usePrepared && <span className="text-xs text-fuchsia-200">Preparados {preparedSpellCount}/{grimoireConfig.preparedLimit || 0}</span>}
                                             <button onClick={() => setAddModal({isOpen: true, type: 'spell', data: {}})} className="text-xs font-fantasy uppercase tracking-wider bg-fuchsia-900/50 border border-fuchsia-700 hover:bg-fuchsia-600 text-fuchsia-100 hover:text-white px-4 py-2 rounded transition-colors shadow-md">+ Conjuro</button>
                                         </div>
                                     </div>
                                     
+                                    <button type="button" onClick={() => setGrimoireSettingsOpen(value => !value)} className="mb-3 text-xs text-gray-400 hover:text-fuchsia-200">⚙ Configuración del Grimorio</button>
+                                    {grimoireSettingsOpen && <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4 text-xs">
+                                        {[['useKnownLimit','Usa límite de conjuros conocidos','knownLimit',`Conocidos ${knownSpellCount} / ${grimoireConfig.knownLimit || 0}`],['usePrepared','Usa conjuros preparados','preparedLimit',`Preparados ${preparedSpellCount} / ${grimoireConfig.preparedLimit || 0}`],['useCantripLimit','Usa límite de trucos conocidos','cantripLimit',`Trucos ${cantripCount} / ${grimoireConfig.cantripLimit || 0}`]].map(([key,label,limit,labelCount]) => <label key={key} className="flex flex-wrap items-center gap-2 p-3 rounded border border-gray-700 bg-gray-900/50"><input type="checkbox" checked={!!grimoireConfig[key]} onChange={e => setGrimoireConfig(prev => ({...prev,[key]:e.target.checked}))} className="w-4 h-4 accent-fuchsia-600"/><span className="font-bold text-gray-200">{label}</span>{grimoireConfig[key] && <><input type="number" min="0" value={grimoireConfig[limit]} onChange={e => setGrimoireConfig(prev => ({...prev,[limit]:handleNumInput(e.target.value)}))} className="w-14 bg-gray-950 border border-gray-700 rounded px-1 py-1 text-center text-white"/><span className="text-fuchsia-300">{labelCount}</span></>}</label>)}
+                                        <label className="flex flex-wrap items-center gap-2 p-3 rounded border border-gray-700 bg-gray-900/50"><input type="checkbox" checked={!!grimoireConfig.usePactMagic} onChange={e => setGrimoireConfig(prev => ({...prev,usePactMagic:e.target.checked}))} className="w-4 h-4 accent-fuchsia-600"/><span className="font-bold text-gray-200">Usa Magia de pacto</span>{grimoireConfig.usePactMagic && <><input type="number" min="0" value={grimoireConfig.pactSlots.current} onChange={e => setGrimoireConfig(prev => ({...prev,pactSlots:{...prev.pactSlots,current:handleNumInput(e.target.value)}}))} className="w-12 bg-gray-950 border border-gray-700 rounded px-1 py-1 text-center text-white"/><span>/</span><input type="number" min="0" value={grimoireConfig.pactSlots.max} onChange={e => setGrimoireConfig(prev => ({...prev,pactSlots:{...prev.pactSlots,max:handleNumInput(e.target.value)}}))} className="w-12 bg-gray-950 border border-gray-700 rounded px-1 py-1 text-center text-white"/><span>Nivel</span><input type="number" min="1" max="9" value={grimoireConfig.pactSlots.level} onChange={e => setGrimoireConfig(prev => ({...prev,pactSlots:{...prev.pactSlots,level:handleNumInput(e.target.value)}}))} className="w-10 bg-gray-950 border border-gray-700 rounded px-1 py-1 text-center text-white"/></>}</label>
+                                    </div>}
+                                    <div className="flex flex-wrap gap-2 mb-4"><button onClick={() => setGrimoireView('library')} className={`px-3 py-2 text-xs rounded ${grimoireView === 'library' ? 'bg-fuchsia-700 text-white' : 'bg-gray-800 text-gray-300'}`}>Mis conjuros</button><button onClick={() => setGrimoireView('available')} className={`px-3 py-2 text-xs rounded ${grimoireView === 'available' ? 'bg-fuchsia-700 text-white' : 'bg-gray-800 text-gray-300'}`}>Disponibles ahora</button><input value={spellSearch} onChange={e => setSpellSearch(e.target.value)} placeholder="Buscar" className="min-w-[10rem] flex-1 bg-gray-950 border border-gray-700 rounded px-3 py-2 text-sm"/><select value={spellFilter} onChange={e => setSpellFilter(e.target.value)} className="bg-gray-950 border border-gray-700 rounded px-2 text-sm"><option value="all">Todos</option><option value="cantrip">Trucos</option><option value="prepared">Preparados</option><option value="ritual">Rituales</option><option value="concentration">Concentración</option><option value="favorite">Favoritos</option>{[...new Set(spells.map(spell => spell.level))].sort((a,b)=>a-b).map(level => <option key={level} value={level}>{level === 0 ? 'Trucos' : `Nivel ${level}`}</option>)}</select></div>
                                     {/* Ranuras (Slots) */}
-                                    <div className="flex flex-wrap gap-2 mb-6 pb-6 border-b border-gray-800 justify-center md:justify-start">
-                                        {[1,2,3,4,5,6,7,8,9].map(lvl => (
-                                            <div key={lvl} className="flex flex-col items-center bg-gray-900/60 p-2 rounded-lg border border-gray-700 w-[76px] shadow-inner">
-                                                <span className="text-[10px] font-bold text-fuchsia-400 font-fantasy uppercase tracking-wider">Nivel {lvl}</span>
-                                                <div className="flex items-center justify-between w-full mt-2 bg-gray-950 rounded border border-gray-800 px-1 py-1">
-                                                    <button onClick={() => adjustSpellSlot(lvl, -1)} className="text-gray-500 hover:text-white px-1 leading-none font-bold">-</button>
-                                                    <span className="text-white text-sm font-mono font-bold mx-1">{spellSlots[lvl].current}</span>
-                                                    <button onClick={() => adjustSpellSlot(lvl, 1)} className="text-gray-500 hover:text-white px-1 leading-none font-bold">+</button>
-                                                </div>
-                                                <div className="text-gray-500 text-[10px] mt-2 flex items-center justify-center w-full bg-gray-900 rounded py-0.5">
-                                                    Max <input type="number" value={spellSlots[lvl].max} onChange={e => setSpellSlots({...spellSlots, [lvl]: {...spellSlots[lvl], max: handleNumInput(e.target.value)}})} className="w-6 bg-transparent border-b border-gray-700 text-center outline-none text-gray-300 ml-1 focus:border-fuchsia-500 font-mono" />
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
+                                    <div className="flex flex-wrap items-center gap-2 mb-4 pb-4 border-b border-gray-800">{[1,2,3,4,5,6,7,8,9].filter(level => showEmptySlots || Number(spellSlots[level].max) > 0).map(level => <button key={level} onClick={() => setEditingSlotLevel(level)} className="px-3 py-2 rounded border border-gray-700 bg-gray-900 text-xs font-mono hover:border-fuchsia-500"><b className="text-fuchsia-300">N{level}</b> {spellSlots[level].current}/{spellSlots[level].max}</button>)}<button onClick={() => setShowEmptySlots(value => !value)} className="px-3 py-2 text-xs text-gray-400">{showEmptySlots ? 'Ocultar niveles vacíos' : 'Mostrar niveles vacíos'}</button></div>
 
                                     {/* Lista de Conjuros */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto pr-2">
-                                        {[...spells].sort((a,b)=>a.level - b.level).map(sp => {
+                                        {displayedSpells.map(sp => {
                                             const compStr = [sp.compV ? 'V' : null, sp.compS ? 'S' : null, sp.compM ? 'M' : null].filter(Boolean).join(', ');
                                             const mDesc = sp.compM && sp.compMDesc ? ` (${sp.compMDesc})` : '';
                                             return (
-                                                <div key={sp.id} onClick={() => toggleSpellPreparation(sp)} 
-                                                     className={`flex flex-col p-3 rounded-lg cursor-pointer border transition-all duration-300 ${sp.prepared ? 'bg-gradient-to-br from-fuchsia-900/30 to-purple-900/10 border-fuchsia-500 shadow-[0_0_15px_rgba(217,70,239,0.2)]' : 'bg-gray-900/40 border-gray-800 hover:border-gray-600'} relative group`}>
+                                                <div key={sp.id} className={`flex flex-col p-3 rounded-lg border transition-all duration-300 ${sp.prepared ? 'bg-gradient-to-br from-fuchsia-900/30 to-purple-900/10 border-fuchsia-500 shadow-[0_0_15px_rgba(217,70,239,0.2)]' : 'bg-gray-900/40 border-gray-800'} relative group`}>
                                                     <div className="flex justify-between items-center mb-2">
                                                         <div className="flex items-center space-x-3">
-                                                            <span className={`text-[10px] font-bold font-mono px-2 py-1 rounded ${sp.prepared ? 'bg-fuchsia-600 text-white shadow-[0_0_8px_#d946ef]' : 'bg-gray-800 text-gray-400 border border-gray-700'}`}>Nv {sp.level}</span>
+                                                            <span className={`text-[10px] font-bold font-mono px-2 py-1 rounded ${sp.prepared ? 'bg-fuchsia-600 text-white shadow-[0_0_8px_#d946ef]' : 'bg-gray-800 text-gray-400 border border-gray-700'}`}>{sp.level === 0 ? 'Truco' : `Nv ${sp.level}`}</span>
                                                             <span className={`font-bold text-sm font-fantasy tracking-wider ${sp.prepared ? 'text-fuchsia-200' : 'text-gray-300'}`}>{sp.name} {sp.prepared && '✨'}</span>
                                                         </div>
                                                     </div>
@@ -1638,7 +1704,8 @@
                                                         </div>
                                                         {compStr && <span className="mt-1"><span className="text-gray-500">Comp:</span> <span className="text-purple-300">{compStr}</span>{mDesc}</span>}
                                                     </div>
-                                                    <p className="text-[11px] text-gray-400 mt-1 leading-snug whitespace-pre-wrap">{sp.notes}</p>
+                                                    <p className="text-[11px] text-gray-400 mt-1 leading-snug whitespace-pre-wrap">{sp.description || sp.notes}</p>
+                                                    <div className="flex flex-wrap gap-2 mt-3"><button onClick={() => setCastSpell(sp)} className="px-3 py-1.5 rounded bg-fuchsia-800 hover:bg-fuchsia-700 text-xs text-white">Lanzar</button>{grimoireConfig.useKnownLimit && sp.level > 0 && <button onClick={() => toggleSpellKnown(sp)} className="px-3 py-1.5 rounded border border-gray-600 text-xs text-gray-200">{sp.known ? 'Dejar de conocer' : 'Conocer'}</button>}{grimoireConfig.usePrepared && sp.level > 0 && <button onClick={() => toggleSpellPreparation(sp)} className="px-3 py-1.5 rounded border border-fuchsia-700 text-xs text-fuchsia-200">{sp.prepared ? 'Dejar de preparar' : 'Preparar'}</button>}<button onClick={() => setSpells(spells.map(item => item.id === sp.id ? {...item,favorite:!item.favorite} : item))} className="px-2 py-1.5 text-xs text-yellow-300">{sp.favorite ? '★' : '☆'}</button></div>
                                                     <button onClick={(e) => { e.stopPropagation(); confirmDelete(`¿Borrar hechizo "${sp.name}"?`, () => setSpells(spells.filter(s => s.id !== sp.id))); }} className="absolute top-2 right-2 text-gray-600 hover:text-red-500 font-bold opacity-0 group-hover:opacity-100 text-lg transition-opacity">×</button>
                                                 </div>
                                             )
@@ -1651,13 +1718,18 @@
                         </div>
 
                         {}
-                        {/* ================= BOTÓN FLOTANTE DIARIO ================= */}
-                        <div data-tab="inventory" className="tab-section fixed bottom-20 right-6 z-40">
-                            <button onClick={() => setNotesModalOpen(true)} className="bg-gradient-to-br from-purple-600 to-indigo-800 hover:from-purple-500 hover:to-indigo-700 text-white p-4 rounded-full shadow-[0_0_20px_rgba(147,51,234,0.6)] border border-purple-400 transition-transform duration-300 hover:scale-110 flex items-center justify-center" title="Abrir Diario de Sesión">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                                </svg>
-                            </button>
+                        <div data-tab="inventory" className="tab-section rpg-panel p-4">
+                            <div className="flex flex-wrap justify-between items-center gap-3 rpg-panel-header pb-3 mb-3">
+                                <h2 className="text-lg font-fantasy font-bold text-purple-300 tracking-widest uppercase">Diario</h2>
+                                <div className="flex items-center gap-2">
+                                    {diaryOpen && <button onClick={() => setSessionNotes([{ id: 'note_' + Date.now(), date: new Date().toLocaleDateString(), text: '' }, ...sessionNotes])} className="min-h-10 px-3 py-2 rounded border border-purple-600 bg-purple-950/40 text-purple-100 text-xs font-fantasy uppercase">+ Nueva entrada</button>}
+                                    <button type="button" onClick={() => setDiaryOpen(value => !value)} className="w-11 h-11 rounded border border-purple-600 bg-purple-950/50 hover:bg-purple-900 text-purple-100 text-2xl leading-none" aria-label={diaryOpen ? 'Contraer diario' : 'Desplegar diario'}>{diaryOpen ? '−' : '+'}</button>
+                                </div>
+                            </div>
+                            {diaryOpen && <div className="space-y-3">
+                                {sessionNotes.map(note => <div key={note.id} className="relative border border-gray-800 bg-gray-900/50 p-3 rounded"><input type="text" value={note.date} onChange={e => setSessionNotes(sessionNotes.map(item => item.id === note.id ? {...item,date:e.target.value} : item))} className="w-full pr-8 bg-transparent border-b border-gray-700 text-purple-200 font-bold outline-none"/><textarea value={note.text} onChange={e => setSessionNotes(sessionNotes.map(item => item.id === note.id ? {...item,text:e.target.value} : item))} className="mt-3 w-full min-h-24 bg-gray-950 border border-gray-800 rounded p-3 text-sm text-gray-300"/><button onClick={() => confirmDelete(`¿Borrar las notas de la sesión "${note.date}"?`, () => setSessionNotes(sessionNotes.filter(item => item.id !== note.id)))} className="absolute top-3 right-3 text-red-400">×</button></div>)}
+                                {sessionNotes.length === 0 && <p className="text-sm text-gray-500">El diario está vacío.</p>}
+                            </div>}
                         </div>
 
                         </div>
@@ -1680,6 +1752,13 @@
                         </nav>
 
                         {/* ================= MODALES ================= */}
+
+                        {restModalOpen && (
+                            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4" onClick={() => setRestModalOpen(false)}><div className="rpg-panel max-w-lg w-full max-h-[85vh] overflow-y-auto p-5 border border-cyan-600" onClick={e => e.stopPropagation()}>
+                                <h3 className="text-xl font-fantasy text-cyan-200">Descansar</h3>
+                                {!restType ? <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5"><button onClick={() => setRestType('short')} className="min-h-20 p-4 rounded border border-cyan-700 text-left hover:bg-cyan-950/30"><b>Descanso corto</b><span className="block text-xs text-gray-400 mt-1">Recursos cortos y Magia de pacto.</span></button><button onClick={() => setRestType('long')} className="min-h-20 p-4 rounded border border-purple-700 text-left hover:bg-purple-950/30"><b>Descanso largo</b><span className="block text-xs text-gray-400 mt-1">Vida, ranuras y recursos.</span></button></div> : <div className="mt-4 space-y-4">{restType === 'short' && <div className="p-3 rounded bg-gray-900 border border-gray-700"><p className="text-sm">Dados disponibles: <b>{hitDice.current}{hitDice.type}</b> · Constitución: {formatMod(getModNum(stats.con))}</p><div className="flex items-center gap-3 mt-3"><span>Dados gastados</span><button onClick={() => setRestSpentDice(value => Math.max(0, Number(value)-1))}>−</button><b>{restSpentDice}</b><button disabled={(Number(hp.current)||0) >= (Number(hp.max)||0)} onClick={() => setRestSpentDice(value => Math.min(Number(hitDice.current)||0, Number(value)+1))}>+</button></div><label className="block mt-3 text-sm">Puntos de golpe recuperados<input disabled={!restSpentDice} min="0" type="number" value={restHealing} onChange={e => setRestHealing(Math.max(0, Number(e.target.value)||0))} className="ml-2 w-20 bg-gray-950 border border-gray-700 rounded p-1"/></label></div>}<div className="p-3 rounded border border-gray-700"><b>Vista previa</b>{restPreview.changes.length ? <ul className="mt-2 text-sm space-y-1">{restPreview.changes.map((change,index)=><li key={index}>{change}</li>)}</ul> : <p className="text-sm text-gray-500 mt-2">No hay cambios calculables.</p>}<p className="text-xs text-gray-500 mt-3">Sin cambios: {restPreview.unchanged.join(', ') || 'ninguno'}</p></div><div className="flex justify-end gap-3"><button onClick={() => setRestType(null)}>Volver</button><button onClick={confirmRest} className="px-4 py-2 rounded bg-cyan-700 text-white">Confirmar descanso</button></div></div>}
+                            </div></div>
+                        )}
 
                         {characterManagerOpen && (
                             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4" onClick={() => setCharacterManagerOpen(false)}>
@@ -1746,6 +1825,17 @@
                                 </div>
                             </div>
                         )}
+
+                        {castSpell && (
+                            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4">
+                                <div className="rpg-panel p-5 max-w-md w-full border border-fuchsia-500">
+                                    <h3 className="font-fantasy text-lg text-fuchsia-200">Lanzar {castSpell.name}</h3>
+                                    {castSpell.level === 0 ? <><p className="text-sm text-gray-300 mt-3">Truco: no consume ranuras.</p><button onClick={() => castWithSlot(0)} className="mt-4 px-4 py-2 bg-fuchsia-700 rounded text-white">Confirmar</button></> : <div className="mt-4 space-y-2">{[1,2,3,4,5,6,7,8,9].filter(level => level >= castSpell.level && Number(spellSlots[level].current) > 0).map(level => <button key={level} onClick={() => castWithSlot(level)} className="w-full p-3 text-left rounded border border-gray-700 hover:border-fuchsia-500">Ranura de nivel {level} ({spellSlots[level].current} disponible)</button>)}{grimoireConfig.usePactMagic && Number(grimoireConfig.pactSlots.current) > 0 && Number(grimoireConfig.pactSlots.level) >= castSpell.level && <button onClick={() => castWithSlot(grimoireConfig.pactSlots.level, true)} className="w-full p-3 text-left rounded border border-yellow-700 text-yellow-200">Magia de pacto: nivel {grimoireConfig.pactSlots.level} ({grimoireConfig.pactSlots.current} disponible)</button>}<button onClick={() => setCastSpell(null)} className="px-4 py-2 text-gray-300">Cancelar</button></div>}
+                                </div>
+                            </div>
+                        )}
+
+                        {editingSlotLevel && <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4" onClick={() => setEditingSlotLevel(null)}><div className="rpg-panel p-5 w-full max-w-xs" onClick={e => e.stopPropagation()}><h3 className="font-fantasy text-fuchsia-200">Ranura nivel {editingSlotLevel}</h3><label className="block mt-3 text-sm">Disponibles<input type="number" value={spellSlots[editingSlotLevel].current} onChange={e => setSpellSlots(prev => ({...prev,[editingSlotLevel]:{...prev[editingSlotLevel],current:handleNumInput(e.target.value)}}))} className="mt-1 w-full bg-gray-950 border border-gray-700 rounded p-2"/></label><label className="block mt-3 text-sm">Máximo<input type="number" value={spellSlots[editingSlotLevel].max} onChange={e => setSpellSlots(prev => ({...prev,[editingSlotLevel]:{...prev[editingSlotLevel],max:handleNumInput(e.target.value)}}))} className="mt-1 w-full bg-gray-950 border border-gray-700 rounded p-2"/></label><button onClick={() => setEditingSlotLevel(null)} className="mt-4 px-4 py-2 bg-fuchsia-700 rounded">Listo</button></div></div>}
 
                         {notesModalOpen && (
                             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4" onClick={() => setNotesModalOpen(false)}>
@@ -1909,8 +1999,9 @@
                                             <>
                                                 <div className="grid grid-cols-2 gap-4">
                                                     <div>
-                                                        <label className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1.5 block font-fantasy">Nivel (1-9)</label>
-                                                        <input type="number" min="1" max="9" value={addModal.data.level || ''} onChange={e => setAddModal({...addModal, data: {...addModal.data, level: handleNumInput(e.target.value)}})} className="w-full bg-gray-950 border border-gray-700 rounded p-2.5 text-white focus:border-fuchsia-500 outline-none text-center font-mono" />
+                                                        <label className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1.5 block font-fantasy">Nivel (0 = Truco)</label>
+                                                        <input type="number" min="0" max="9" value={addModal.data.level ?? ''} onChange={e => setAddModal({...addModal, data: {...addModal.data, level: handleNumInput(e.target.value)}})} className="w-full bg-gray-950 border border-gray-700 rounded p-2.5 text-white focus:border-fuchsia-500 outline-none text-center font-mono" />
+                                                        {Number(addModal.data.level) === 0 && <span className="text-[10px] text-fuchsia-300">Truco: no consume ranuras ni se prepara.</span>}
                                                     </div>
                                                     <div>
                                                         <label className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1.5 block font-fantasy">Alcance</label>
@@ -1951,6 +2042,7 @@
                                         )}
 
                                         {addModal.type === 'resource' && (
+                                            <div className="space-y-3">
                                             <div className="flex gap-4">
                                                 <div className="w-1/2">
                                                     <label className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1.5 block font-fantasy">Usos Máximos</label>
@@ -1960,6 +2052,9 @@
                                                     <label className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1.5 block font-fantasy">Tipo de Dado</label>
                                                     <input type="text" placeholder="Ej. d8 (Opcional)" value={addModal.data.dice || ''} onChange={e => setAddModal({...addModal, data: {...addModal.data, dice: e.target.value}})} className="w-full bg-gray-950 border border-gray-700 rounded p-2.5 text-white focus:border-purple-500 outline-none text-center font-mono" />
                                                 </div>
+                                            </div>
+                                            <label className="block text-sm text-gray-300">Se recupera con<select value={addModal.data.recoveryRest || 'manual'} onChange={e => setAddModal({...addModal, data:{...addModal.data,recoveryRest:e.target.value}})} className="block mt-1 w-full bg-gray-950 border border-gray-700 rounded p-2"><option value="short">Descanso corto (también largo)</option><option value="long">Descanso largo</option><option value="manual">Solo manualmente</option></select></label>
+                                            {addModal.data.recoveryRest !== 'manual' && <label className="block text-sm text-gray-300">Cantidad recuperada<select value={addModal.data.recoveryMode || 'full'} onChange={e => setAddModal({...addModal, data:{...addModal.data,recoveryMode:e.target.value}})} className="block mt-1 w-full bg-gray-950 border border-gray-700 rounded p-2"><option value="full">Completa</option><option value="fixed">Cantidad fija</option><option value="half">Mitad</option><option value="manual">Manual</option></select></label>}
                                             </div>
                                         )}
 
