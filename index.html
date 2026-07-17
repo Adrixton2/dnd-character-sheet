@@ -18,14 +18,62 @@
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 
     <style>
+        :root {
+            --app-font-scale: 1;
+            --app-background: radial-gradient(circle at center, #1f2937 0%, #0f172a 80%, #020617 100%);
+            --app-text: #e2e8f0;
+            --panel-background: linear-gradient(145deg, rgba(31,41,55,0.9) 0%, rgba(17,24,39,0.95) 100%);
+            --panel-border: #374151;
+            --panel-shadow: inset 0 1px 0 rgba(255,255,255,0.03), inset 0 0 16px rgba(0,0,0,0.38), 0 6px 16px rgba(0,0,0,0.24);
+            --panel-header-background: linear-gradient(90deg, rgba(88,28,135,0.4) 0%, transparent 100%);
+            --panel-header-border: rgba(139,92,246,0.3);
+            --panel-header-accent: #a855f7;
+            --nav-shadow: 0 -8px 24px rgba(0, 0, 0, 0.38);
+        }
+        html { font-size: calc(16px * var(--app-font-scale)); }
+        html[data-text-size="small"] { --app-font-scale: 0.9; }
+        html[data-text-size="large"] { --app-font-scale: 1.12; }
+        html[data-theme="parchment"] {
+            --app-background: radial-gradient(circle at center, #f2e5bf 0%, #c7a96d 78%, #72512d 100%);
+            --app-text: #2e2416;
+            --panel-background: linear-gradient(145deg, rgba(255,248,221,0.96) 0%, rgba(231,207,157,0.96) 100%);
+            --panel-border: #8a6638;
+            --panel-shadow: inset 0 1px 0 rgba(255,255,255,0.65), inset 0 0 16px rgba(104,68,24,0.16), 0 6px 16px rgba(64,38,14,0.25);
+            --panel-header-background: linear-gradient(90deg, rgba(139,94,44,0.25) 0%, transparent 100%);
+            --panel-header-border: rgba(107,70,29,0.45);
+            --panel-header-accent: #8b5e2c;
+            --nav-shadow: 0 -8px 24px rgba(64,38,14,0.28);
+        }
+        html[data-theme="arcane"] {
+            --app-background: radial-gradient(circle at 50% 15%, #35205c 0%, #17112d 55%, #080613 100%);
+            --app-text: #eee7ff;
+            --panel-background: linear-gradient(145deg, rgba(41,28,74,0.94) 0%, rgba(18,13,39,0.97) 100%);
+            --panel-border: #7354b8;
+            --panel-shadow: inset 0 1px 0 rgba(240,230,255,0.08), inset 0 0 18px rgba(81,47,158,0.23), 0 6px 18px rgba(8,4,24,0.35);
+            --panel-header-background: linear-gradient(90deg, rgba(116,78,198,0.4) 0%, transparent 100%);
+            --panel-header-border: rgba(176,136,255,0.45);
+            --panel-header-accent: #c084fc;
+            --nav-shadow: 0 -8px 24px rgba(8,4,24,0.55);
+        }
+        html[data-theme="contrast"] {
+            --app-background: #000;
+            --app-text: #fff;
+            --panel-background: #090909;
+            --panel-border: #fff;
+            --panel-shadow: 0 0 0 1px #fff, 0 6px 16px rgba(0,0,0,0.8);
+            --panel-header-background: #111;
+            --panel-header-border: #fff;
+            --panel-header-accent: #ffeb3b;
+            --nav-shadow: 0 -4px 0 #fff;
+        }
         body { 
             margin: 0; 
             overflow: hidden;
             /* Fondo estilo obsidiana oscura con ligero viñeteado */
-            background: radial-gradient(circle at center, #1f2937 0%, #0f172a 80%, #020617 100%);
+            background: var(--app-background);
             background-attachment: fixed;
             font-family: 'Inter', sans-serif;
-            color: #e2e8f0;
+            color: var(--app-text);
             line-height: 1.45;
             text-rendering: optimizeLegibility;
         }
@@ -34,17 +82,17 @@
 
         /* Paneles estilo interfaz RPG */
         .rpg-panel {
-            background: linear-gradient(145deg, rgba(31,41,55,0.9) 0%, rgba(17,24,39,0.95) 100%);
-            border: 1px solid #374151;
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), inset 0 0 16px rgba(0,0,0,0.38), 0 6px 16px rgba(0,0,0,0.24);
+            background: var(--panel-background);
+            border: 1px solid var(--panel-border);
+            box-shadow: var(--panel-shadow);
             border-radius: 8px;
             backdrop-filter: blur(4px);
         }
 
         .rpg-panel-header {
-            background: linear-gradient(90deg, rgba(88,28,135,0.4) 0%, transparent 100%);
-            border-bottom: 1px solid rgba(139,92,246,0.3);
-            border-left: 2px solid #a855f7;
+            background: var(--panel-header-background);
+            border-bottom: 1px solid var(--panel-header-border);
+            border-left: 2px solid var(--panel-header-accent);
             min-width: 0;
         }
 
@@ -115,7 +163,7 @@
         .shadow-glow { box-shadow: 0 0 15px rgba(168, 85, 247, 0.4); }
 
         .bottom-nav {
-            box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.38);
+            box-shadow: var(--nav-shadow);
             padding-bottom: env(safe-area-inset-bottom);
         }
         .bottom-nav-button { min-height: 56px; }
@@ -152,6 +200,28 @@
         .combat-mode-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.75rem; }
         .combat-mode-stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.625rem; }
         .combat-mode-list { display: grid; gap: 0.625rem; }
+        .resource-reorder-grid { position: relative; touch-action: pan-y; }
+        .resource-card {
+            touch-action: pan-y;
+            user-select: none;
+            -webkit-user-select: none;
+            transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 160ms ease, border-color 160ms ease, opacity 160ms ease;
+        }
+        .resource-card.is-drag-pending { border-color: rgba(168, 85, 247, 0.72); }
+        .resource-card.is-dragging {
+            position: absolute;
+            left: var(--resource-drag-left);
+            top: var(--resource-drag-top);
+            width: var(--resource-drag-width);
+            height: var(--resource-drag-height);
+            z-index: 30;
+            pointer-events: none;
+            opacity: 0.96;
+            transform: translate3d(var(--resource-drag-x), var(--resource-drag-y), 0) scale(1.035);
+            box-shadow: 0 18px 32px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(168, 85, 247, 0.7);
+            transition: none;
+        }
+        .resource-card.is-drop-target { border-color: #c084fc; box-shadow: inset 0 0 0 1px rgba(192, 132, 252, 0.5); }
 
         *, *::before, *::after { box-sizing: border-box; }
         button, input, select, textarea { min-width: 0; max-width: 100%; font: inherit; }
@@ -266,6 +336,7 @@
 
         @media (prefers-reduced-motion: reduce) {
             .tab-content-wrapper, .animate-attack { animation: none !important; transition: none !important; }
+            .resource-card { transition: none !important; }
         }
     </style>
 </head>
@@ -282,6 +353,26 @@
         const MAX_IMPORT_FILE_SIZE = 1024 * 1024;
         const MAX_PORTRAIT_FILE_SIZE = 5 * 1024 * 1024;
         const MAX_PORTRAIT_DATA_URL_LENGTH = 1500000;
+        const APP_SETTINGS_KEY = 'dnd_app_settings_v1';
+        const DEFAULT_APP_SETTINGS = { theme: 'classic', language: 'es', textSize: 'normal' };
+        const APP_TRANSLATIONS = {
+            es: { character: 'Personaje', combat: 'Combate', spellbook: 'Grimorio', inventory: 'Inventario/Lore', settings: 'Configuración', theme: 'Tema', language: 'Idioma', textSize: 'Tamaño de texto', classic: 'Oscuro clásico', parchment: 'Pergamino', arcane: 'Arcano', contrast: 'Alto contraste', small: 'Pequeño', normal: 'Normal', large: 'Grande', close: 'Cerrar' },
+            en: { character: 'Character', combat: 'Combat', spellbook: 'Spellbook', inventory: 'Inventory/Lore', settings: 'Settings', theme: 'Theme', language: 'Language', textSize: 'Text size', classic: 'Classic dark', parchment: 'Parchment', arcane: 'Arcane', contrast: 'High contrast', small: 'Small', normal: 'Normal', large: 'Large', close: 'Close' }
+        };
+
+        const loadAppSettings = () => {
+            try {
+                const stored = JSON.parse(window.localStorage.getItem(APP_SETTINGS_KEY));
+                if (!isRecord(stored)) return DEFAULT_APP_SETTINGS;
+                return {
+                    theme: ['classic', 'parchment', 'arcane', 'contrast'].includes(stored.theme) ? stored.theme : DEFAULT_APP_SETTINGS.theme,
+                    language: ['es', 'en'].includes(stored.language) ? stored.language : DEFAULT_APP_SETTINGS.language,
+                    textSize: ['small', 'normal', 'large'].includes(stored.textSize) ? stored.textSize : DEFAULT_APP_SETTINGS.textSize
+                };
+            } catch (error) {
+                return DEFAULT_APP_SETTINGS;
+            }
+        };
 
         const createCharacterId = () => window.crypto?.randomUUID?.() || `character_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         const cloneData = (value) => JSON.parse(JSON.stringify(value));
@@ -292,10 +383,10 @@
             charInfo: { name: '', race: '', cls: '' }, level: '1', inspiration: false,
             hp: { current: '', max: '', temp: '0' }, hitDice: { current: '', type: '' },
             speed: '', size: '', initBonus: '0', deathSaves: { successes: 0, failures: 0 },
-            stats: { fue: '', des: '', con: '', int: '', sab: '', car: '' }, savingThrows: [],
+            stats: { fue: '', des: '', con: '', int: '', sab: '', car: '' }, tempStats: { fue: '0', des: '0', con: '0', int: '0', sab: '0', car: '0' }, savingThrows: [],
             proficiencies: { expertise: [], proficient: [] }, resources: [], currency: { po: '0', pp: '0', pc: '0' },
             inventory: [], armors: [], tools: [], miscAc: '0', weapons: [], traits: [], feats: [],
-            spells: [], spellLimits: { known: '', prepared: '' }, spellSlots: createBlankSpellSlots(), grimoireConfig: createDefaultGrimoireConfig(), conditions: [], sessionNotes: []
+            spells: [], spellLimits: { known: '', prepared: '' }, spellSlots: createBlankSpellSlots(), grimoireConfig: createDefaultGrimoireConfig(), conditions: [], timers: [], activityLog: [], sessionNotes: []
         });
 
         const legacyStorageKeys = {
@@ -311,7 +402,7 @@
         const legacyDefaults = () => ({
             charInfo: { name: 'Kael Velosombrío', race: 'Shadar-kai', cls: 'Pícaro (Soulknife)' }, level: '5', inspiration: false,
             hp: { current: '34', max: '34', temp: '0' }, hitDice: { current: '5', type: 'd8' }, speed: '30', size: 'Mediano', initBonus: '0', deathSaves: { successes: 0, failures: 0 },
-            stats: { fue: '12', des: '20', con: '16', int: '12', sab: '15', car: '15' }, savingThrows: ['des', 'int'],
+            stats: { fue: '12', des: '20', con: '16', int: '12', sab: '15', car: '15' }, tempStats: { fue: '0', des: '0', con: '0', int: '0', sab: '0', car: '0' }, savingThrows: ['des', 'int'],
             proficiencies: { expertise: ['sigilo', 'percepcion'], proficient: ['acrobacias', 'juego_de_manos', 'engano', 'persuasion'] },
             resources: [
                 { id: 'res_psi', name: 'Dados Psiónicos', current: 6, max: 6, type: 'd8' },
@@ -373,7 +464,33 @@
             const suggestedRest = resource.recoveryRest || (resource.recovery === 'both' ? 'short' : resource.recovery === 'short' || resource.recovery === 'long' || resource.recovery === 'manual' ? resource.recovery : 'manual');
             return { ...resource, recoveryRest: suggestedRest === 'both' ? 'short' : suggestedRest, recoveryMode: ['full','fixed','half','manual'].includes(resource.recoveryMode) ? resource.recoveryMode : 'full', recoveryAmount: Number(resource.recoveryAmount) || 0 };
         };
-        const normalizeGrimoireData = (data) => ({ ...data, resources: Array.isArray(data.resources) ? data.resources.map(normalizeResource) : [], spells: Array.isArray(data.spells) ? data.spells.map(normalizeSpell) : [], conditions: Array.isArray(data.conditions) ? data.conditions : [], grimoireConfig: { ...createDefaultGrimoireConfig(), ...(isRecord(data.grimoireConfig) ? data.grimoireConfig : {}), pactSlots: { ...createDefaultGrimoireConfig().pactSlots, ...(isRecord(data.grimoireConfig?.pactSlots) ? data.grimoireConfig.pactSlots : {}) } } });
+        const normalizeTempStats = (tempStats) => Object.fromEntries(['fue', 'des', 'con', 'int', 'sab', 'car'].map(key => [key, String(Number(tempStats?.[key]) || 0)]));
+        const getArmorFormula = (armor) => {
+            const ac = Number(armor?.ac) || (armor?.type === 'shield' ? 2 : 11);
+            if (armor?.type === 'light') return `${ac} + DES`;
+            if (armor?.type === 'medium') return `${ac} + DES (máx. +2)`;
+            if (armor?.type === 'heavy') return `${ac} fija`;
+            return `+${ac} CA`;
+        };
+        const reorderItemsById = (items, sourceId, targetId) => {
+            const sourceIndex = items.findIndex(item => item.id === sourceId);
+            const targetIndex = items.findIndex(item => item.id === targetId);
+            if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return items;
+            const next = items.slice();
+            const [moved] = next.splice(sourceIndex, 1);
+            next.splice(targetIndex, 0, moved);
+            return next;
+        };
+        const REAL_TIMER_UNITS = { minutes: 60 * 1000, hours: 60 * 60 * 1000 };
+        const normalizeTimer = (timer) => {
+            const type = ['turns', 'rounds', 'minutes', 'hours', 'days'].includes(timer.type) ? timer.type : 'turns';
+            const current = Math.max(0, Number(timer.current) || 0);
+            const storedExpiration = Date.parse(timer.expiresAt);
+            const expiresAt = REAL_TIMER_UNITS[type] ? (Number.isFinite(storedExpiration) ? new Date(storedExpiration).toISOString() : new Date(Date.now() + current * REAL_TIMER_UNITS[type]).toISOString()) : '';
+            return { id: timer.id || `timer_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, name: typeof timer.name === 'string' ? timer.name : '', current, max: timer.max === '' || timer.max === null || timer.max === undefined ? '' : Math.max(0, Number(timer.max) || 0), type, expiresAt };
+        };
+        const normalizeActivityLog = (entries) => Array.isArray(entries) ? entries.filter(entry => isRecord(entry) && typeof entry.description === 'string').map(entry => ({ id: entry.id || `activity_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, timestamp: Number.isFinite(Date.parse(entry.timestamp)) ? entry.timestamp : new Date().toISOString(), description: entry.description })).slice(0, 100) : [];
+        const normalizeGrimoireData = (data) => ({ ...data, tempStats: normalizeTempStats(data.tempStats), resources: Array.isArray(data.resources) ? data.resources.map(normalizeResource) : [], spells: Array.isArray(data.spells) ? data.spells.map(normalizeSpell) : [], conditions: Array.isArray(data.conditions) ? data.conditions : [], timers: Array.isArray(data.timers) ? data.timers.map(normalizeTimer) : [], activityLog: normalizeActivityLog(data.activityLog), grimoireConfig: { ...createDefaultGrimoireConfig(), ...(isRecord(data.grimoireConfig) ? data.grimoireConfig : {}), pactSlots: { ...createDefaultGrimoireConfig().pactSlots, ...(isRecord(data.grimoireConfig?.pactSlots) ? data.grimoireConfig.pactSlots : {}) } } });
         const calculateRestPreview = (restType, characterData, spentHitDice = 0, manualHealing = 0) => {
             const data = normalizeGrimoireData(cloneData(characterData));
             const changes = [], unchanged = [];
@@ -411,7 +528,7 @@
         const normalizeLegacyData = (rawData) => {
             const defaults = legacyDefaults();
             const data = { ...defaults, ...rawData };
-            const objectFields = ['charInfo', 'hp', 'hitDice', 'deathSaves', 'stats', 'currency', 'spellLimits'];
+            const objectFields = ['charInfo', 'hp', 'hitDice', 'deathSaves', 'stats', 'tempStats', 'currency', 'spellLimits'];
             objectFields.forEach(field => {
                 data[field] = isRecord(rawData[field]) ? { ...defaults[field], ...rawData[field] } : defaults[field];
             });
@@ -652,6 +769,11 @@
         function KaelCharacterSheet() {
             /* ================= ESTADOS ================= */
             const { manager, activeCharacter, updateActiveData, createCharacter, duplicateCharacter, importCharacter, selectCharacter, deleteCharacter, setPortrait } = useCharacterManager();
+            const [appSettings, setAppSettings] = useState(loadAppSettings);
+            const [appSettingsOpen, setAppSettingsOpen] = useState(false);
+            const [activityHistoryOpen, setActivityHistoryOpen] = useState(false);
+            const [portraitViewerOpen, setPortraitViewerOpen] = useState(false);
+            const t = (key) => APP_TRANSLATIONS[appSettings.language]?.[key] || APP_TRANSLATIONS.es[key] || key;
             const [charInfo, setCharInfo] = useCharacterField(activeCharacter.data, updateActiveData, 'charInfo');
             const [level, setLevel] = useCharacterField(activeCharacter.data, updateActiveData, 'level');
             const PROF_BONUS = Math.ceil((Number(level) || 1) / 4) + 1;
@@ -667,11 +789,19 @@
             const [deathSaves, setDeathSaves] = useCharacterField(activeCharacter.data, updateActiveData, 'deathSaves');
 
             const [stats, setStats] = useCharacterField(activeCharacter.data, updateActiveData, 'stats');
+            const [tempStats, setTempStats] = useCharacterField(activeCharacter.data, updateActiveData, 'tempStats');
             const [savingThrows, setSavingThrows] = useCharacterField(activeCharacter.data, updateActiveData, 'savingThrows');
 
             const [proficiencies, setProficiencies] = useCharacterField(activeCharacter.data, updateActiveData, 'proficiencies');
 
             const [resources, setResources] = useCharacterField(activeCharacter.data, updateActiveData, 'resources');
+            const [resourceDrag, setResourceDrag] = useState({ id: null, targetId: null, x: 0, y: 0, left: 0, top: 0, width: 0, height: 0 });
+            const resourcePressRef = useRef(null);
+            const resourceLongPressTimerRef = useRef(null);
+            const resourceReorderTargetRef = useRef(null);
+            const resourceCardRefs = useRef(new Map());
+            const resourceGridRef = useRef(null);
+            const resourceDragListenersRef = useRef(null);
             const [currency, setCurrency] = useCharacterField(activeCharacter.data, updateActiveData, 'currency');
             const [inventory, setInventory] = useCharacterField(activeCharacter.data, updateActiveData, 'inventory');
             
@@ -683,12 +813,14 @@
             const [selectedWeaponId, setSelectedWeaponId] = useState('wp_soul');
             const [activeTab, setActiveTab] = useState("character");
             const [combatMode, setCombatMode] = useState(false);
+            const [conditionsManagerOpen, setConditionsManagerOpen] = useState(false);
             const [tabTransition, setTabTransition] = useState({ phase: 'idle', pendingTab: null, direction: 'left', enterActive: false });
             const [isTransitioning, setIsTransitioning] = useState(false);
             const tabTransitionRef = useRef({ phase: 'idle', pendingTab: null, direction: 'left', enterActive: false });
             const tabScrollRef = useRef(null);
             const tabScrollPositions = useRef({ combat: 0, character: 0, grimoire: 0, inventory: 0 });
             const tabTouchStart = useRef(null);
+            const activitySnapshotRef = useRef(null);
             const transitionTimerRef = useRef(null);
             const safetyTimerRef = useRef(null);
             const enterFrameRef = useRef(null);
@@ -702,6 +834,8 @@
             const [spellSlots, setSpellSlots] = useCharacterField(activeCharacter.data, updateActiveData, 'spellSlots');
             const [grimoireConfig, setGrimoireConfig] = useCharacterField(activeCharacter.data, updateActiveData, 'grimoireConfig');
             const [conditions, setConditions] = useCharacterField(activeCharacter.data, updateActiveData, 'conditions');
+            const [timers, setTimers] = useCharacterField(activeCharacter.data, updateActiveData, 'timers');
+            const [activityLog, setActivityLog] = useCharacterField(activeCharacter.data, updateActiveData, 'activityLog');
             const [sessionNotes, setSessionNotes] = useCharacterField(activeCharacter.data, updateActiveData, 'sessionNotes');
             const [grimoireView, setGrimoireView] = useState('library');
             const [spellSearch, setSpellSearch] = useState('');
@@ -714,6 +848,8 @@
             const [restType, setRestType] = useState(null);
             const [restSpentDice, setRestSpentDice] = useState(0);
             const [restHealing, setRestHealing] = useState(0);
+            const [timerModal, setTimerModal] = useState({ isOpen: false, id: null, data: { name: '', current: '1', max: '', type: 'turns' } });
+            const [timerNow, setTimerNow] = useState(Date.now());
 
             // ESTADOS PARA MODALES
             const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, message: "", onConfirm: null, isAlert: false });
@@ -729,12 +865,174 @@
             // Ref para la barra de vida táctil
             const hpBarRef = useRef(null);
             const [isDraggingHp, setIsDraggingHp] = useState(false);
+            const createActivitySnapshot = (data = activeCharacter.data) => ({
+                hp: { current: data.hp?.current ?? '', temp: data.hp?.temp ?? '' },
+                miscAc: data.miscAc ?? '',
+                resources: Object.fromEntries((data.resources || []).map(resource => [resource.id, { name: resource.name, current: Number(resource.current) || 0 }])),
+                spellSlots: Object.fromEntries(Object.entries(data.spellSlots || {}).map(([level, slot]) => [level, Number(slot.current) || 0])),
+                conditions: [...(data.conditions || [])],
+                timers: Object.fromEntries((data.timers || []).map(timer => [timer.id, { name: timer.name, current: Number(timer.current) || 0, expiresAt: timer.expiresAt || '', type: timer.type }]))
+            });
+            const appendActivity = (descriptions) => {
+                const entries = (Array.isArray(descriptions) ? descriptions : [descriptions]).filter(Boolean);
+                if (!entries.length) return;
+                const timestamp = new Date().toISOString();
+                setActivityLog(previous => entries.map((description, index) => ({ id: `activity_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 6)}`, timestamp, description })).concat(previous || []).slice(0, 100));
+            };
 
             useEffect(() => {
                 setSelectedWeaponId(weapons[0]?.id || null);
+                setPortraitViewerOpen(false);
             }, [manager.activeCharacterId]);
 
+            useEffect(() => {
+                if (isDraggingHp) return;
+                const snapshot = createActivitySnapshot();
+                const previous = activitySnapshotRef.current;
+                if (!previous || previous.characterId !== manager.activeCharacterId) {
+                    activitySnapshotRef.current = { characterId: manager.activeCharacterId, snapshot };
+                    return;
+                }
+
+                const changes = [];
+                if (String(previous.snapshot.hp.current) !== String(snapshot.hp.current)) changes.push(`Vida ${previous.snapshot.hp.current || 0} → ${snapshot.hp.current || 0}`);
+                if (String(previous.snapshot.hp.temp) !== String(snapshot.hp.temp)) changes.push(`Vida temporal ${previous.snapshot.hp.temp || 0} → ${snapshot.hp.temp || 0}`);
+                if (String(previous.snapshot.miscAc) !== String(snapshot.miscAc)) changes.push(`Modificador temporal de CA ${formatMod(Number(previous.snapshot.miscAc) || 0)} → ${formatMod(Number(snapshot.miscAc) || 0)}`);
+
+                Object.entries(snapshot.resources).forEach(([id, resource]) => {
+                    const prior = previous.snapshot.resources[id];
+                    if (prior && prior.current !== resource.current) changes.push(`${resource.name} ${prior.current} → ${resource.current}`);
+                });
+                Object.entries(snapshot.spellSlots).forEach(([level, current]) => {
+                    if (previous.snapshot.spellSlots[level] !== undefined && previous.snapshot.spellSlots[level] !== current) changes.push(`Ranura nivel ${level} ${previous.snapshot.spellSlots[level]} → ${current}`);
+                });
+                snapshot.conditions.filter(condition => !previous.snapshot.conditions.includes(condition)).forEach(condition => changes.push(`Condición activada: ${condition}`));
+                previous.snapshot.conditions.filter(condition => !snapshot.conditions.includes(condition)).forEach(condition => changes.push(`Condición eliminada: ${condition}`));
+                Object.entries(snapshot.timers).forEach(([id, timer]) => {
+                    const prior = previous.snapshot.timers[id];
+                    if (!prior) changes.push(`Temporizador añadido: ${timer.name}`);
+                    else if (prior.current !== timer.current || prior.expiresAt !== timer.expiresAt || prior.type !== timer.type) changes.push(`Temporizador ${timer.name}: ${prior.current} → ${timer.current}`);
+                });
+                Object.entries(previous.snapshot.timers).filter(([id]) => !snapshot.timers[id]).forEach(([, timer]) => changes.push(`Temporizador eliminado: ${timer.name}`));
+
+                activitySnapshotRef.current = { characterId: manager.activeCharacterId, snapshot };
+                appendActivity(changes);
+            }, [manager.activeCharacterId, hp.current, hp.temp, miscAc, resources, spellSlots, conditions, timers, isDraggingHp]);
+
+            useEffect(() => {
+                try { window.localStorage.setItem(APP_SETTINGS_KEY, JSON.stringify(appSettings)); } catch (error) {}
+                document.documentElement.dataset.theme = appSettings.theme;
+                document.documentElement.dataset.textSize = appSettings.textSize;
+                document.documentElement.lang = appSettings.language;
+            }, [appSettings]);
+
+            useEffect(() => {
+                if (!timers.some(timer => REAL_TIMER_UNITS[timer.type] && Date.parse(timer.expiresAt) > Date.now())) return;
+                const intervalId = window.setInterval(() => setTimerNow(Date.now()), 1000);
+                return () => window.clearInterval(intervalId);
+            }, [timers, timerNow]);
+
             const handleNumInput = (value) => value === "" ? "" : String(Number(value));
+
+            const clearResourceLongPress = () => {
+                if (resourceLongPressTimerRef.current) window.clearTimeout(resourceLongPressTimerRef.current);
+                resourceLongPressTimerRef.current = null;
+            };
+
+            const finishResourceDrag = () => {
+                clearResourceLongPress();
+                resourceDragListenersRef.current?.();
+                resourceDragListenersRef.current = null;
+                resourcePressRef.current = null;
+                resourceReorderTargetRef.current = null;
+                setResourceDrag({ id: null, targetId: null, x: 0, y: 0, left: 0, top: 0, width: 0, height: 0 });
+            };
+
+            const reorderResources = (sourceId, targetId) => {
+                const previousRects = new Map();
+                resourceCardRefs.current.forEach((element, id) => previousRects.set(id, element.getBoundingClientRect()));
+                setResources(previous => {
+                    const next = reorderItemsById(previous, sourceId, targetId);
+                    if (next === previous) return previous;
+                    requestAnimationFrame(() => {
+                        next.forEach(resource => {
+                            if (resource.id === sourceId) return;
+                            const element = resourceCardRefs.current.get(resource.id);
+                            const previousRect = previousRects.get(resource.id);
+                            if (!element || !previousRect) return;
+                            const nextRect = element.getBoundingClientRect();
+                            const x = previousRect.left - nextRect.left;
+                            const y = previousRect.top - nextRect.top;
+                            if (!x && !y) return;
+                            element.style.transition = 'none';
+                            element.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+                            requestAnimationFrame(() => {
+                                element.style.transition = 'transform 160ms cubic-bezier(0.22, 1, 0.36, 1)';
+                                element.style.transform = '';
+                                window.setTimeout(() => { element.style.transition = ''; }, 180);
+                            });
+                        });
+                    });
+                    return next;
+                });
+            };
+
+            const handleResourcePointerDown = (event, resourceId) => {
+                if (event.button !== undefined && event.button !== 0) return;
+                if (resourcePressRef.current) return;
+                if (event.target.closest('button, input, select, textarea, a, label')) return;
+                const start = { id: resourceId, pointerId: event.pointerId, x: event.clientX, y: event.clientY, active: false, element: event.currentTarget };
+                start.element.setPointerCapture?.(start.pointerId);
+                resourcePressRef.current = start;
+                resourceLongPressTimerRef.current = window.setTimeout(() => {
+                    if (resourcePressRef.current !== start) return;
+                    start.active = true;
+                    resourceReorderTargetRef.current = resourceId;
+                    const rect = start.element.getBoundingClientRect();
+                    const gridRect = resourceGridRef.current?.getBoundingClientRect();
+                    setResourceDrag({ id: resourceId, targetId: resourceId, x: 0, y: 0, left: rect.left - (gridRect?.left || 0), top: rect.top - (gridRect?.top || 0), width: rect.width, height: rect.height });
+                    const onMove = moveEvent => handleResourcePointerMove(moveEvent);
+                    const onEnd = endEvent => handleResourcePointerEnd(endEvent);
+                    window.addEventListener('pointermove', onMove, { passive: false });
+                    window.addEventListener('pointerup', onEnd);
+                    window.addEventListener('pointercancel', onEnd);
+                    resourceDragListenersRef.current = () => {
+                        window.removeEventListener('pointermove', onMove);
+                        window.removeEventListener('pointerup', onEnd);
+                        window.removeEventListener('pointercancel', onEnd);
+                    };
+                }, 420);
+            };
+
+            const handleResourcePointerMove = (event) => {
+                const press = resourcePressRef.current;
+                if (!press || press.pointerId !== event.pointerId) return;
+                const x = event.clientX - press.x;
+                const y = event.clientY - press.y;
+                if (!press.active) {
+                    if (Math.hypot(x, y) > 12) clearResourceLongPress();
+                    return;
+                }
+                event.preventDefault();
+                const target = document.elementFromPoint(event.clientX, event.clientY)?.closest('[data-resource-id]');
+                const targetId = target?.dataset.resourceId || press.id;
+                setResourceDrag(previous => previous.id === press.id && (previous.x !== x || previous.y !== y || previous.targetId !== targetId) ? { ...previous, x, y, targetId } : previous);
+                if (targetId !== resourceReorderTargetRef.current) {
+                    resourceReorderTargetRef.current = targetId;
+                    if (targetId !== press.id) reorderResources(press.id, targetId);
+                }
+            };
+
+            const handleResourcePointerEnd = (event) => {
+                const press = resourcePressRef.current;
+                if (!press || press.pointerId !== event.pointerId) return;
+                if (press.active) event.preventDefault();
+                if (press.element.hasPointerCapture?.(press.pointerId)) press.element.releasePointerCapture(press.pointerId);
+                finishResourceDrag();
+            };
+
+            useEffect(() => () => { clearResourceLongPress(); resourceDragListenersRef.current?.(); }, []);
+            useEffect(() => finishResourceDrag(), [manager.activeCharacterId]);
 
             const restoreTabScroll = (tab) => {
                 requestAnimationFrame(() => {
@@ -856,13 +1154,14 @@
                 const score = Number(scoreStr) || 0;
                 return Math.floor((score - 10) / 2);
             };
+            const getEffectiveStat = (statKey) => (Number(stats[statKey]) || 0) + (Number(tempStats[statKey]) || 0);
             
             const formatMod = (mod) => (mod >= 0 ? `+${mod}` : mod);
             
             const getPassivePerception = () => {
                 const isExp = proficiencies.expertise.includes('percepcion');
                 const isProf = proficiencies.proficient.includes('percepcion');
-                const baseMod = getModNum(stats.sab);
+                const baseMod = getModNum(getEffectiveStat('sab'));
                 const totalMod = baseMod + (isExp ? PROF_BONUS * 2 : isProf ? PROF_BONUS : 0);
                 return 10 + totalMod;
             };
@@ -880,7 +1179,7 @@
                     if (equippedArmor.type === 'heavy') dexLimit = 0;
                 }
                 
-                let dexMod = getModNum(stats.des);
+                let dexMod = getModNum(getEffectiveStat('des'));
                 dexMod = Math.min(dexMod, dexLimit);
                 
                 let shieldBonus = 0;
@@ -893,7 +1192,15 @@
 
             const calculateAC = () => calculateBaseAC() + (Number(miscAc) || 0);
 
-            const isStealthDisadvantaged = armors.some(a => a.equipped && a.stealthDis);
+            const stealthDisadvantageArmor = armors.find(a => a.equipped && a.stealthDis);
+            const isStealthDisadvantaged = !!stealthDisadvantageArmor;
+            const getAcBreakdown = () => {
+                const equippedArmor = armors.find(armor => armor.equipped && armor.type !== 'shield');
+                const equippedShield = armors.find(armor => armor.equipped && armor.type === 'shield');
+                const dexLimit = equippedArmor?.type === 'medium' ? 2 : equippedArmor?.type === 'heavy' ? 0 : Infinity;
+                const dexApplied = Math.min(getModNum(getEffectiveStat('des')), dexLimit);
+                return { armor: equippedArmor, shield: equippedShield, armorBase: equippedArmor ? (Number(equippedArmor.ac) || 0) : 10, dexApplied, shieldBonus: equippedShield ? (Number(equippedShield.ac) || 2) : 0, temporary: Number(miscAc) || 0 };
+            };
 
             // Funciones de interacción rápida
             const toggleSavingThrow = (statKey) => {
@@ -1067,6 +1374,50 @@
                 });
             };
 
+            const timerTypeLabels = { turns: 'Turnos', rounds: 'Rondas', minutes: 'Minutos', hours: 'Horas', days: 'Días' };
+            const getTimerRemaining = (timer) => {
+                const unit = REAL_TIMER_UNITS[timer.type];
+                if (!unit) return Math.max(0, Number(timer.current) || 0);
+                const expiration = Date.parse(timer.expiresAt);
+                return Number.isFinite(expiration) ? Math.max(0, Math.ceil((expiration - timerNow) / unit)) : Math.max(0, Number(timer.current) || 0);
+            };
+            const formatTimerRemaining = (timer) => {
+                const unit = REAL_TIMER_UNITS[timer.type];
+                if (!unit) return `${getTimerRemaining(timer)} ${timerTypeLabels[timer.type]}`;
+                const expiration = Date.parse(timer.expiresAt);
+                const milliseconds = Number.isFinite(expiration) ? Math.max(0, expiration - timerNow) : getTimerRemaining(timer) * unit;
+                const totalSeconds = Math.ceil(milliseconds / 1000);
+                const seconds = totalSeconds % 60;
+                const totalMinutes = Math.floor(totalSeconds / 60);
+                if (timer.type === 'minutes') return `${totalMinutes} min ${seconds} s`;
+                if (totalSeconds < 60 * 60) return `${totalMinutes} min ${seconds} s`;
+                const hours = Math.floor(totalMinutes / 60);
+                const minutes = totalMinutes % 60;
+                return `${hours} h ${minutes} min`;
+            };
+            const setTimerRemaining = (id, value) => setTimers(previous => previous.map(timer => {
+                if (timer.id !== id) return timer;
+                const current = Math.max(0, Number(value) || 0);
+                return REAL_TIMER_UNITS[timer.type] ? { ...timer, current, expiresAt: new Date(Date.now() + current * REAL_TIMER_UNITS[timer.type]).toISOString() } : { ...timer, current };
+            }));
+            const sortedTimers = timers.slice().sort((a, b) => getTimerRemaining(a) - getTimerRemaining(b) || a.name.localeCompare(b.name));
+            const openTimerModal = (timer = null) => setTimerModal(timer ? { isOpen: true, id: timer.id, data: { ...timer, current: String(getTimerRemaining(timer)) } } : { isOpen: true, id: null, data: { name: '', current: '1', max: '', type: 'turns' } });
+            const saveTimer = () => {
+                const name = timerModal.data.name.trim();
+                if (!name) {
+                    showAlert('Indica un nombre para el temporizador.');
+                    return;
+                }
+                const current = Math.max(0, Number(timerModal.data.current) || 0);
+                const nextTimer = normalizeTimer({ ...timerModal.data, id: timerModal.id || `timer_${Date.now()}`, name, current, expiresAt: REAL_TIMER_UNITS[timerModal.data.type] ? new Date(Date.now() + current * REAL_TIMER_UNITS[timerModal.data.type]).toISOString() : '' });
+                setTimers(previous => timerModal.id ? previous.map(timer => timer.id === timerModal.id ? nextTimer : timer) : [...previous, nextTimer]);
+                setTimerModal({ isOpen: false, id: null, data: { name: '', current: '1', max: '', type: 'turns' } });
+            };
+            const adjustTimer = (id, delta) => {
+                const timer = timers.find(item => item.id === id);
+                if (timer) setTimerRemaining(id, getTimerRemaining(timer) + delta);
+            };
+
             const updateHpFromEvent = (e) => {
                 const target = e.currentTarget || hpBarRef.current;
                 if (!target) return;
@@ -1176,7 +1527,9 @@
             const restPreview = restType ? calculateRestPreview(restType, activeCharacter.data, restSpentDice, restHealing) : null;
             const confirmRest = () => {
                 if (!restPreview) return;
+                activitySnapshotRef.current = { characterId: manager.activeCharacterId, snapshot: createActivitySnapshot(restPreview.data) };
                 updateActiveData(restPreview.data);
+                appendActivity(restType === 'short' ? 'Descanso corto' : 'Descanso largo');
                 setRestModalOpen(false); setRestType(null); setRestSpentDice(0); setRestHealing(0);
             };
             const knownSpellCount = spells.filter(spell => spell.level > 0 && spell.known).length;
@@ -1193,7 +1546,7 @@
                 return favorites.length ? favorites : availableSpells.slice(0, 3);
             })();
             const tacticalResources = resources.filter(resource => Number(resource.max) > 0);
-            const combatConditions = ['Derribado', 'Envenenado', 'Asustado', 'Invisible', 'Paralizado', 'Hechizado', 'Agarrado'];
+            const combatConditions = ['Derribado', 'Agarrado', 'Invisible', 'Asustado', 'Hechizado', 'Envenenado', 'Paralizado', 'Petrificado', 'Aturdido', 'Restringido'];
             const addNamePlaceholders = { item: 'Ej: Cuerda de cáñamo', armor: 'Ej: Armadura de cuero', tool: 'Ej: Herramientas de ladrón', weapon: 'Ej: Espada larga', resource: 'Ej: Puntos de Ki', spell: 'Ej: Bola de fuego', attack: 'Ej: Ataque con espada' };
             const renderAcTemporaryControls = () => (
                 <div className="mt-2 flex flex-col items-center gap-1 z-10">
@@ -1206,6 +1559,35 @@
                     <button type="button" disabled={(Number(miscAc) || 0) === 0} onClick={() => { if ((Number(miscAc) || 0) !== 0) setMiscAc('0'); }} className="text-[10px] text-purple-300 hover:text-white disabled:text-gray-600 disabled:cursor-not-allowed">Reiniciar</button>
                 </div>
             );
+            const renderAcBreakdown = () => {
+                const breakdown = getAcBreakdown();
+                return <div className="mt-2 w-full rounded border border-gray-700/80 bg-gray-950/40 px-2 py-1.5 text-center text-[10px] leading-relaxed text-gray-400">
+                    <span className="block text-gray-300">Armadura: <b>{breakdown.armor ? `${breakdown.armor.name} (${breakdown.armorBase})` : 'Sin armadura (10)'}</b></span>
+                    <span>DES aplicada: <b className="text-purple-300">{formatMod(breakdown.dexApplied)}</b></span>
+                    {breakdown.shield && <span> · Escudo: <b className="text-purple-300">+{breakdown.shieldBonus}</b></span>}
+                    {breakdown.temporary !== 0 && <span> · Temporal: <b className="text-cyan-300">{formatMod(breakdown.temporary)}</b></span>}
+                </div>;
+            };
+            const renderUsageDots = (current, max, colorClass = 'text-purple-400') => {
+                const safeMax = Math.floor(Math.max(0, Number(max) || 0));
+                const safeCurrent = Math.floor(Math.max(0, Math.min(safeMax, Number(current) || 0)));
+                if (!safeMax) return null;
+                if (safeMax > 12) return <span className={`text-xs font-mono ${colorClass}`} aria-label={`${safeCurrent} de ${safeMax} usos disponibles`}>● × {safeCurrent} / {safeMax}</span>;
+                return <span className="flex flex-wrap justify-center gap-1" role="img" aria-label={`${safeCurrent} de ${safeMax} usos disponibles`}>{Array.from({ length: safeMax }, (_, index) => <span key={index} aria-hidden="true" className={`text-sm leading-none ${index < safeCurrent ? colorClass : 'text-gray-700'}`}>●</span>)}</span>;
+            };
+            const renderTimerList = (editable = false) => sortedTimers.length ? (
+                <div className="space-y-2">
+                    {sortedTimers.map(timer => {
+                        const remaining = getTimerRemaining(timer);
+                        const expired = remaining === 0;
+                        const hasMax = timer.max !== '' && timer.max !== null && timer.max !== undefined;
+                        return <div key={timer.id} className={`flex flex-wrap items-center justify-between gap-2 rounded border p-2.5 ${expired ? 'border-red-500 bg-red-950/40' : 'border-gray-700 bg-gray-900/60'}`}>
+                            <div className="min-w-0"><strong className={`block text-sm truncate ${expired ? 'text-red-200' : 'text-gray-100'}`}>{timer.name}</strong><span className={`text-xs ${expired ? 'text-red-300' : 'text-purple-300'}`}>{expired ? 'Expirado' : `${formatTimerRemaining(timer)}${hasMax ? ` / ${timer.max}` : ''}`}</span></div>
+                            {editable && <div className="flex items-center gap-1 shrink-0"><button type="button" aria-label={`Reducir ${timer.name}`} onClick={() => adjustTimer(timer.id, -1)} className="w-9 h-9 rounded border border-gray-600 bg-gray-800 text-gray-200">−</button><input aria-label={`Valor de ${timer.name}`} type="number" min="0" value={remaining} onChange={event => setTimerRemaining(timer.id, event.target.value)} className="w-12 h-9 rounded border border-gray-600 bg-gray-950 text-center text-sm text-white"/><button type="button" aria-label={`Aumentar ${timer.name}`} onClick={() => adjustTimer(timer.id, 1)} className="w-9 h-9 rounded border border-gray-600 bg-gray-800 text-gray-200">+</button><button type="button" onClick={() => openTimerModal(timer)} className="min-h-9 px-2 rounded border border-gray-600 text-xs text-gray-200">Editar</button><button type="button" onClick={() => confirmDelete(`¿Eliminar el temporizador "${timer.name}"?`, () => setTimers(previous => previous.filter(item => item.id !== timer.id)))} className="w-9 h-9 rounded border border-red-800 text-red-300">×</button></div>}
+                        </div>;
+                    })}
+                </div>
+            ) : <p className="text-sm text-gray-500">No hay temporizadores activos.</p>;
             const displayedSpells = (grimoireView === 'available' ? availableSpells : spells).filter(spell => {
                 const query = spell.name.toLowerCase().includes(spellSearch.toLowerCase());
                 const filter = spellFilter === 'all' || (spellFilter === 'cantrip' && spell.level === 0) || (spellFilter === 'prepared' && spell.prepared) || (spellFilter === 'ritual' && spell.ritual) || (spellFilter === 'concentration' && spell.concentration) || (spellFilter === 'favorite' && spell.favorite) || Number(spellFilter) === spell.level;
@@ -1259,8 +1641,8 @@
                                 <section className="rpg-panel p-4">
                                     <h2 className="font-fantasy text-sm font-bold uppercase tracking-widest text-purple-300 mb-3">Defensas</h2>
                                     <div className="combat-mode-stat-grid text-center">
-                                        <div className="col-span-2 rounded border border-gray-700 bg-gray-900/70 p-2"><span className="block text-[10px] uppercase tracking-wider text-gray-400">CA</span><strong className="text-3xl text-white">{calculateAC()}</strong>{renderAcTemporaryControls()}</div>
-                                        <div className="rounded border border-gray-700 bg-gray-900/70 p-2"><span className="block text-[10px] uppercase tracking-wider text-gray-400">Iniciativa</span><strong className="text-2xl text-white">{formatMod(getModNum(stats.des) + (Number(initBonus) || 0))}</strong></div>
+                                        <div className="col-span-2 rounded border border-gray-700 bg-gray-900/70 p-2"><span className="block text-[10px] uppercase tracking-wider text-gray-400">CA</span><strong className="text-3xl text-white">{calculateAC()}</strong>{renderAcTemporaryControls()}{renderAcBreakdown()}</div>
+                                        <div className="rounded border border-gray-700 bg-gray-900/70 p-2"><span className="block text-[10px] uppercase tracking-wider text-gray-400">Iniciativa</span><strong className="text-2xl text-white">{formatMod(getModNum(getEffectiveStat('des')) + (Number(initBonus) || 0))}</strong></div>
                                         <div className="rounded border border-gray-700 bg-gray-900/70 p-2"><span className="block text-[10px] uppercase tracking-wider text-gray-400">Velocidad</span><strong className="text-2xl text-white">{speed || '0'}</strong></div>
                                         <div className="rounded border border-gray-700 bg-gray-900/70 p-2"><span className="block text-[10px] uppercase tracking-wider text-gray-400">Percepcion</span><strong className="text-2xl text-white">{getPassivePerception()}</strong></div>
                                     </div>
@@ -1274,8 +1656,8 @@
                                 <section className="rpg-panel p-4">
                                     <h2 className="font-fantasy text-sm font-bold uppercase tracking-widest text-purple-300 mb-3">Recursos</h2>
                                     <div className="combat-mode-list">
-                                        {tacticalResources.map((resource, index) => <div key={resource.id} className="flex items-center justify-between gap-3 rounded border border-gray-700 bg-gray-900/70 p-2"><span className="min-w-0 text-sm font-semibold text-gray-100 truncate">{resource.name}</span><div className="flex items-center gap-2 shrink-0"><button aria-label={`Reducir ${resource.name}`} onClick={() => setResources(previous => previous.map((item, itemIndex) => itemIndex === index ? { ...item, current: Math.max(0, Number(item.current) - 1) } : item))} className="w-10 h-10 rounded border border-gray-600 bg-gray-800 text-lg text-gray-200">-</button><span className="w-12 text-center font-bold text-white">{resource.current}/{resource.max}</span><button aria-label={`Aumentar ${resource.name}`} onClick={() => setResources(previous => previous.map((item, itemIndex) => itemIndex === index ? { ...item, current: Math.min(Number(item.max), Number(item.current) + 1) } : item))} className="w-10 h-10 rounded border border-gray-600 bg-gray-800 text-lg text-gray-200">+</button></div></div>)}
-                                        {grimoireConfig.usePactMagic && Number(grimoireConfig.pactSlots.max) > 0 && <div className="flex items-center justify-between gap-3 rounded border border-yellow-800/70 bg-yellow-950/20 p-2"><span className="text-sm font-semibold text-yellow-100">Magia de pacto (N{grimoireConfig.pactSlots.level})</span><span className="font-bold text-yellow-200">{grimoireConfig.pactSlots.current}/{grimoireConfig.pactSlots.max}</span></div>}
+                                        {tacticalResources.map((resource, index) => <div key={resource.id} className="rounded border border-gray-700 bg-gray-900/70 p-2"><div className="flex flex-wrap items-center justify-between gap-2"><span className="min-w-0 text-sm font-semibold text-gray-100 truncate">{resource.name}</span>{renderUsageDots(resource.current, resource.max, 'text-purple-400')}<div className="flex items-center gap-2 shrink-0"><button aria-label={`Reducir ${resource.name}`} onClick={() => setResources(previous => previous.map((item, itemIndex) => itemIndex === index ? { ...item, current: Math.max(0, Number(item.current) - 1) } : item))} className="w-10 h-10 rounded border border-gray-600 bg-gray-800 text-lg text-gray-200">−</button><span className="flex items-center w-14 text-center font-bold text-white"><input aria-label={`${resource.name} actuales`} type="number" min="0" value={resource.current} onChange={event => setResources(previous => previous.map((item, itemIndex) => itemIndex === index ? { ...item, current: Math.max(0, Math.min(Number(item.max), Number(event.target.value) || 0)) } : item))} className="w-7 bg-transparent text-center outline-none"/><span>/{resource.max}</span></span><button aria-label={`Aumentar ${resource.name}`} onClick={() => setResources(previous => previous.map((item, itemIndex) => itemIndex === index ? { ...item, current: Math.min(Number(item.max), Number(item.current) + 1) } : item))} className="w-10 h-10 rounded border border-gray-600 bg-gray-800 text-lg text-gray-200">+</button></div></div></div>)}
+                                        {grimoireConfig.usePactMagic && Number(grimoireConfig.pactSlots.max) > 0 && <div className="rounded border border-yellow-800/70 bg-yellow-950/20 p-2"><div className="flex flex-wrap items-center justify-between gap-2"><span className="text-sm font-semibold text-yellow-100">Magia de pacto (N{grimoireConfig.pactSlots.level})</span>{renderUsageDots(grimoireConfig.pactSlots.current, grimoireConfig.pactSlots.max, 'text-yellow-300')}<div className="flex items-center gap-2"><button type="button" onClick={() => setGrimoireConfig(previous => ({ ...previous, pactSlots: { ...previous.pactSlots, current: Math.max(0, Number(previous.pactSlots.current) - 1) } }))} className="w-10 h-10 rounded border border-yellow-700 bg-gray-900 text-yellow-100">−</button><span className="flex items-center w-14 font-bold text-yellow-100"><input aria-label="Ranuras de magia de pacto actuales" type="number" min="0" value={grimoireConfig.pactSlots.current} onChange={event => setGrimoireConfig(previous => ({ ...previous, pactSlots: { ...previous.pactSlots, current: Math.max(0, Math.min(Number(previous.pactSlots.max), Number(event.target.value) || 0)) } }))} className="w-7 bg-transparent text-center outline-none"/><span>/{grimoireConfig.pactSlots.max}</span></span><button type="button" onClick={() => setGrimoireConfig(previous => ({ ...previous, pactSlots: { ...previous.pactSlots, current: Math.min(Number(previous.pactSlots.max), Number(previous.pactSlots.current) + 1) } }))} className="w-10 h-10 rounded border border-yellow-700 bg-gray-900 text-yellow-100">+</button></div></div></div>}
                                         {!tacticalResources.length && !(grimoireConfig.usePactMagic && Number(grimoireConfig.pactSlots.max) > 0) && <p className="text-sm text-gray-500">No hay recursos de combate configurados.</p>}
                                     </div>
                                 </section>
@@ -1291,8 +1673,15 @@
                                 </section>
 
                                 <section className="rpg-panel p-4">
+                                    <h2 className="font-fantasy text-sm font-bold uppercase tracking-widest text-cyan-300 mb-3">Temporizadores</h2>
+                                    {renderTimerList()}
+                                </section>
+
+                                <section className="rpg-panel p-4">
                                     <h2 className="font-fantasy text-sm font-bold uppercase tracking-widest text-purple-300 mb-3">Condiciones</h2>
-                                    <div className="flex flex-wrap gap-2">{combatConditions.map(condition => <button key={condition} onClick={() => setConditions(previous => previous.includes(condition) ? previous.filter(item => item !== condition) : [...previous, condition])} className={`min-h-10 px-3 rounded border text-xs font-semibold transition-colors ${conditions.includes(condition) ? 'border-red-400 bg-red-950/70 text-red-100' : 'border-gray-700 bg-gray-900/70 text-gray-300 hover:border-purple-500'}`}>{condition}</button>)}</div>
+                                    {conditions.length ? <div className="flex flex-wrap gap-2">{conditions.map(condition => <button key={condition} onClick={() => setConditions(previous => previous.filter(item => item !== condition))} className="min-h-10 px-3 rounded-full border border-red-400 bg-red-950/70 text-xs font-semibold text-red-100">{condition} ×</button>)}</div> : <p className="text-sm text-gray-500">Sin condiciones activas.</p>}
+                                    <button type="button" onClick={() => setConditionsManagerOpen(value => !value)} className="mt-3 min-h-10 px-3 rounded border border-gray-600 bg-gray-900/70 text-xs text-gray-200 hover:border-purple-500">{conditionsManagerOpen ? 'Ocultar gestión' : 'Gestionar condiciones'}</button>
+                                    {conditionsManagerOpen && <div className="mt-3 flex flex-wrap gap-2">{combatConditions.map(condition => <button key={condition} onClick={() => setConditions(previous => previous.includes(condition) ? previous.filter(item => item !== condition) : [...previous, condition])} className={`min-h-10 px-3 rounded border text-xs font-semibold transition-colors ${conditions.includes(condition) ? 'border-red-400 bg-red-950/70 text-red-100' : 'border-gray-700 bg-gray-900/70 text-gray-300 hover:border-purple-500'}`}>{condition}</button>)}</div>}
                                 </section>
                             </div>
                         </div>
@@ -1344,33 +1733,29 @@
                             {/* Dados de Golpe */}
                             <div className="rpg-panel p-3 flex flex-col items-center justify-center">
                                 <span className="font-fantasy text-gray-400 text-[10px] md:text-xs font-bold uppercase tracking-widest mb-2 text-center">Dados Golpe</span>
-                                <div className="flex items-center space-x-2">
-                                    <button onClick={() => setHitDice(p => ({ ...p, current: String(Math.max(0, (Number(p.current)||0) - 1)) }))} className="w-6 h-6 rounded bg-gray-800 border border-gray-600 text-gray-400 hover:text-white hover:border-gray-400 flex items-center justify-center">-</button>
-                                    <div className="flex flex-col items-center">
-                                        <input type="number" placeholder="0" value={hitDice.current} onChange={e => setHitDice(p => ({ ...p, current: handleNumInput(e.target.value) }))} className="w-10 bg-transparent text-center text-2xl font-bold text-white leading-none outline-none" />
-                                        <div className="text-gray-500 text-[10px] mt-1 flex items-center gap-1 border-t border-gray-700 pt-1 w-full justify-center">
-                                            <span>Max {Number(level)||0}</span>
-                                            <span className="text-gray-600">Dado</span>
-                                            <input aria-label="Tipo de dado de golpe" type="text" placeholder="d8" title="Ej: d8" value={hitDice.type} onChange={e => setHitDice(p => ({...p, type: e.target.value}))} className="w-8 bg-transparent outline-none text-center text-purple-400 font-bold" />
-                                        </div>
-                                    </div>
-                                    <button onClick={() => setHitDice(p => ({ ...p, current: String(Math.min(Number(level)||0, (Number(p.current)||0) + 1)) }))} className="w-6 h-6 rounded bg-gray-800 border border-gray-600 text-gray-400 hover:text-white hover:border-gray-400 flex items-center justify-center">+</button>
+                                <div className="min-h-5 mb-2">{renderUsageDots(hitDice.current, level, 'text-cyan-400')}</div>
+                                <div className="grid h-8 grid-cols-[2rem_3.25rem_2rem] items-center justify-center gap-1">
+                                    <button onClick={() => setHitDice(p => ({ ...p, current: String(Math.max(0, (Number(p.current)||0) - 1)) }))} className="w-8 h-8 rounded bg-gray-800 border border-gray-600 text-gray-400 hover:text-white hover:border-gray-400 flex items-center justify-center">−</button>
+                                    <div className="grid h-8 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center text-sm font-bold leading-none text-white"><input aria-label="Dados de golpe actuales" type="number" placeholder="0" value={hitDice.current} onChange={e => setHitDice(p => ({ ...p, current: handleNumInput(e.target.value) }))} className="h-8 w-full bg-transparent text-center leading-8 outline-none" /><span className="flex h-8 items-center justify-center px-0.5 text-gray-500">/</span><span className="flex h-8 items-center justify-center text-gray-400">{Number(level)||0}</span></div>
+                                    <button onClick={() => setHitDice(p => ({ ...p, current: String(Math.min(Number(level)||0, (Number(p.current)||0) + 1)) }))} className="w-8 h-8 rounded bg-gray-800 border border-gray-600 text-gray-400 hover:text-white hover:border-gray-400 flex items-center justify-center">+</button>
                                 </div>
+                                <div className="text-gray-500 text-[10px] mt-2 flex items-center gap-1 border-t border-gray-700 pt-1 w-full justify-center"><span>Dado</span><input aria-label="Tipo de dado de golpe" type="text" placeholder="d8" title="Ej: d8" value={hitDice.type} onChange={e => setHitDice(p => ({...p, type: e.target.value}))} className="w-8 bg-transparent outline-none text-center text-purple-400 font-bold" /></div>
                             </div>
 
                             {/* CA Calculada */}
                             <div className="rpg-panel p-3 flex flex-col items-center justify-center relative">
                                 <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJyZ2JhKDE2OCwgODUsIDI0NywgMC4xNSkiIHN0cm9rZS13aWR0aD0iMiI+PHBhdGggZD0iTTEyIDIyczgtNCA4LTEwVjVsLTgtMy04IDN2N2MwIDYgOCAxMCA4IDEweiIvPjwvc3ZnPg==')] bg-center bg-no-repeat bg-contain opacity-50"></div>
-                                <span className="font-fantasy text-purple-400 text-[10px] md:text-xs font-bold uppercase tracking-widest mb-1 z-10 text-center">Armadura</span>
+                                <span className="font-fantasy text-purple-400 text-[10px] md:text-xs font-bold uppercase tracking-widest mb-1 z-10 text-center">CA final</span>
                                 <span className="text-4xl font-bold text-white z-10 drop-shadow-md">{calculateAC()}</span>
                                 {renderAcTemporaryControls()}
+                                {renderAcBreakdown()}
                             </div>
 
                             {/* Iniciativa y Percepción (Columna apilada) */}
                             <div className="flex flex-col gap-2">
                                 <div className="rpg-panel p-2 flex flex-col items-center justify-center relative flex-1">
                                     <span className="font-fantasy text-yellow-500 text-[9px] font-bold uppercase tracking-widest mb-1">Iniciativa</span>
-                                    <span className="text-2xl font-bold text-white leading-none">{formatMod(getModNum(stats.des) + (Number(initBonus)||0))}</span>
+                                    <span className="text-2xl font-bold text-white leading-none">{formatMod(getModNum(getEffectiveStat('des')) + (Number(initBonus)||0))}</span>
                                     <div className="flex items-center text-[9px] text-gray-500 mt-1">
                                         Bono: <input type="number" value={initBonus} onChange={e => setInitBonus(handleNumInput(e.target.value))} className="w-6 bg-transparent border-b border-gray-700 text-center ml-1 outline-none focus:border-yellow-500" />
                                     </div>
@@ -1398,6 +1783,23 @@
 
                         </div>
 
+                        <div className="rpg-panel p-4">
+                            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                                <h2 className="font-fantasy text-sm font-bold uppercase tracking-widest text-purple-300">Condiciones</h2>
+                                <button type="button" onClick={() => setConditionsManagerOpen(value => !value)} className="min-h-10 px-3 rounded border border-gray-600 bg-gray-900/70 text-xs text-gray-200 hover:border-purple-500">{conditionsManagerOpen ? 'Ocultar gestión' : 'Gestionar condiciones'}</button>
+                            </div>
+                            {conditions.length ? <div className="flex flex-wrap gap-2">{conditions.map(condition => <button key={condition} onClick={() => setConditions(previous => previous.filter(item => item !== condition))} className="min-h-10 px-3 rounded-full border border-red-400 bg-red-950/70 text-xs font-semibold text-red-100">{condition} ×</button>)}</div> : <p className="text-sm text-gray-500">Sin condiciones activas.</p>}
+                            {conditionsManagerOpen && <div className="mt-3 flex flex-wrap gap-2 border-t border-gray-800 pt-3">{combatConditions.map(condition => <button key={condition} onClick={() => setConditions(previous => previous.includes(condition) ? previous.filter(item => item !== condition) : [...previous, condition])} className={`min-h-10 px-3 rounded border text-xs font-semibold transition-colors ${conditions.includes(condition) ? 'border-red-400 bg-red-950/70 text-red-100' : 'border-gray-700 bg-gray-900/70 text-gray-300 hover:border-purple-500'}`}>{condition}</button>)}</div>}
+                        </div>
+
+                        <div className="rpg-panel p-4">
+                            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                                <h2 className="font-fantasy text-sm font-bold uppercase tracking-widest text-cyan-300">Temporizadores</h2>
+                                <button type="button" onClick={() => openTimerModal()} className="min-h-10 px-3 rounded border border-cyan-700 bg-cyan-950/30 text-xs text-cyan-100 hover:bg-cyan-900/40">+ Temporizador</button>
+                            </div>
+                            {renderTimerList(true)}
+                        </div>
+
                         <div className="flex justify-end">
                             <button type="button" onClick={() => setCombatMode(true)} className="min-h-11 px-4 py-2 rounded border border-red-700 bg-red-950/40 text-red-100 hover:bg-red-900 transition-colors text-xs font-fantasy uppercase tracking-wider shadow-md">
                                 &#9876; Modo Combate
@@ -1413,9 +1815,7 @@
                                 <input ref={portraitFileRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={handlePortraitFile} className="hidden" />
                                 <div className="z-10 flex flex-1 min-w-0 w-full flex-col sm:flex-row items-center sm:items-start gap-4">
                                     <div className="shrink-0 flex flex-col items-center gap-2">
-                                        <div className="w-24 h-24 md:w-28 md:h-28 rounded-lg overflow-hidden border border-purple-500/70 bg-gray-900 shadow-[0_0_16px_rgba(168,85,247,0.25)] flex items-center justify-center">
-                                            {isValidPortraitDataUrl(activeCharacter.meta.portrait) ? <img src={activeCharacter.meta.portrait} alt={`Retrato de ${charInfo.name || 'personaje'}`} className="w-full h-full object-cover" /> : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-12 h-12 text-purple-400/70" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c.8-3.8 3.2-5.8 7.5-5.8s6.7 2 7.5 5.8"/></svg>}
-                                        </div>
+                                        {isValidPortraitDataUrl(activeCharacter.meta.portrait) ? <button type="button" onClick={() => setPortraitViewerOpen(true)} className="w-24 h-24 md:w-28 md:h-28 rounded-lg overflow-hidden border border-purple-500/70 bg-gray-900 shadow-[0_0_16px_rgba(168,85,247,0.25)] hover:border-purple-300 focus-visible:outline-purple-300" aria-label={`Ampliar retrato de ${charInfo.name || 'personaje'}`}><img src={activeCharacter.meta.portrait} alt={`Retrato de ${charInfo.name || 'personaje'}`} className="w-full h-full object-cover" /></button> : <div className="w-24 h-24 md:w-28 md:h-28 rounded-lg overflow-hidden border border-purple-500/70 bg-gray-900 shadow-[0_0_16px_rgba(168,85,247,0.25)] flex items-center justify-center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-12 h-12 text-purple-400/70" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c.8-3.8 3.2-5.8 7.5-5.8s6.7 2 7.5 5.8"/></svg></div>}
                                         {isValidPortraitDataUrl(activeCharacter.meta.portrait) ? <div className="flex gap-2"><button type="button" onClick={() => portraitFileRef.current?.click()} className="min-h-9 px-2 py-1 rounded border border-purple-700 bg-purple-950/50 hover:bg-purple-900 text-purple-100 text-[9px] font-fantasy uppercase tracking-wider">Cambiar</button><button type="button" onClick={removePortrait} className="min-h-9 px-2 py-1 rounded border border-red-800 bg-red-950/50 hover:bg-red-900 text-red-200 text-[9px] font-fantasy uppercase tracking-wider">Eliminar</button></div> : <button type="button" onClick={() => portraitFileRef.current?.click()} className="min-h-9 px-3 py-1 rounded border border-purple-700 bg-purple-950/50 hover:bg-purple-900 text-purple-100 text-[9px] font-fantasy uppercase tracking-wider">Añadir retrato</button>}
                                     </div>
                                     <div className="character-identity flex-1 min-w-0 w-full">
@@ -1440,8 +1840,10 @@
                             </div>
                         </div>
 
-                        <div data-tab="character" className="tab-section flex justify-end">
+                        <div data-tab="character" className="tab-section flex flex-wrap justify-end gap-2">
                             <button type="button" onClick={() => { setRestModalOpen(true); setRestType(null); }} className="min-h-10 px-3 py-2 rounded border border-cyan-700 bg-cyan-950/30 text-cyan-100 text-xs font-fantasy uppercase">Descansar</button>
+                            <button type="button" onClick={() => setActivityHistoryOpen(true)} className="min-h-10 px-3 py-2 rounded border border-gray-600 bg-gray-900/60 text-gray-200 hover:border-purple-500 hover:text-white text-xs font-fantasy uppercase">Historial</button>
+                            <button type="button" onClick={() => setAppSettingsOpen(true)} className="min-h-10 px-3 py-2 rounded border border-gray-600 bg-gray-900/60 text-gray-200 hover:border-purple-500 hover:text-white text-xs font-fantasy uppercase">⚙ {t('settings')}</button>
                         </div>
 
                         {/* Velocidad y Tamaño */}
@@ -1500,12 +1902,15 @@
                                     <h2 className="rpg-panel-header text-lg font-fantasy font-bold text-purple-300 mb-4 pb-2 px-2 tracking-widest uppercase">Atributos</h2>
                                     <div className="space-y-2">
                                         {Object.entries(stats).map(([key, val]) => {
-                                            const mod = getModNum(val);
+                                            const total = getEffectiveStat(key);
+                                            const mod = getModNum(total);
                                             return (
-                                                <div key={key} className="flex items-center justify-between bg-gray-900/60 p-2 rounded border border-gray-800">
-                                                    <span className="uppercase font-bold w-12 text-gray-400 text-sm font-fantasy tracking-wider">{key}</span>
-                                                    <input type="number" placeholder="10" value={val} onChange={(e) => setStats({...stats, [key]: handleNumInput(e.target.value)})} className="w-12 text-center bg-gray-800 text-white rounded p-1 outline-none border border-transparent focus:border-purple-500 font-bold" />
-                                                    <span className="w-12 text-center text-lg font-bold text-white bg-gradient-to-br from-purple-900 to-gray-900 border border-purple-800/50 rounded py-0.5 shadow-inner">{formatMod(mod)}</span>
+                                                <div key={key} className="grid grid-cols-[2.25rem_repeat(4,minmax(0,1fr))] items-center gap-1.5 bg-gray-900/60 p-2.5 rounded border border-gray-800">
+                                                    <span className="uppercase font-bold text-gray-400 text-[13px] font-fantasy tracking-wider">{key}</span>
+                                                    <label className="min-w-0 text-center text-[8px] uppercase tracking-wider text-gray-500">Base<input aria-label={`Atributo base ${key}`} type="number" placeholder="10" value={val} onChange={(e) => setStats({...stats, [key]: handleNumInput(e.target.value)})} className="mt-1 w-full text-center text-base bg-gray-800 text-white rounded p-1.5 outline-none border border-transparent focus:border-purple-500 font-bold" /></label>
+                                                    <label className="min-w-0 text-center text-[8px] uppercase tracking-wider text-gray-500">Temp<input aria-label={`Modificador temporal ${key}`} type="number" placeholder="+0" value={tempStats[key] || '0'} onChange={(e) => setTempStats({...tempStats, [key]: handleNumInput(e.target.value)})} className="mt-1 w-full text-center text-base bg-gray-800 text-cyan-200 rounded p-1.5 outline-none border border-transparent focus:border-cyan-400 font-bold" /></label>
+                                                    <div className="min-w-0 text-center text-[8px] uppercase tracking-wider text-gray-500">Total<strong className="mt-1 block rounded bg-gradient-to-br from-purple-900 to-gray-900 border border-purple-800/50 py-1.5 text-lg leading-none text-white shadow-inner">{total}</strong></div>
+                                                    <div className="min-w-0 text-center text-[8px] uppercase tracking-wider text-gray-500">Mod.<strong className="mt-1 block rounded border border-cyan-900/70 bg-cyan-950/30 py-1.5 text-lg leading-none text-cyan-200 shadow-inner">{formatMod(mod)}</strong></div>
                                                 </div>
                                             );
                                         })}
@@ -1518,7 +1923,7 @@
                                     <div className="space-y-1">
                                         {Object.entries(stats).map(([key, val]) => {
                                             const isProf = savingThrows.includes(key);
-                                            const totalMod = getModNum(val) + (isProf ? PROF_BONUS : 0);
+                                            const totalMod = getModNum(getEffectiveStat(key)) + (isProf ? PROF_BONUS : 0);
                                             const statNames = { fue: 'Fuerza', des: 'Destreza', con: 'Constitución', int: 'Inteligencia', sab: 'Sabiduría', car: 'Carisma' };
                                             return (
                                                 <div key={`save-${key}`} onClick={() => toggleSavingThrow(key)} className="flex items-center justify-between py-1.5 border-b border-gray-800 last:border-0 hover:bg-gray-800/50 px-2 rounded transition-colors cursor-pointer group">
@@ -1540,7 +1945,7 @@
                                         {SKILLS.map(skill => {
                                             const isExp = proficiencies.expertise.includes(skill.key);
                                             const isProf = proficiencies.proficient.includes(skill.key);
-                                            const totalMod = getModNum(stats[skill.stat]) + (isExp ? PROF_BONUS * 2 : isProf ? PROF_BONUS : 0);
+                                            const totalMod = getModNum(getEffectiveStat(skill.stat)) + (isExp ? PROF_BONUS * 2 : isProf ? PROF_BONUS : 0);
                                             
                                             return (
                                                 <div key={skill.key} 
@@ -1551,7 +1956,7 @@
                                                         <span className={`text-[13px] font-medium transition-colors ${isExp || isProf ? 'text-gray-100' : 'text-gray-500 group-hover:text-gray-300'}`}>
                                                             {skill.name} 
                                                             <span className="text-[9px] text-gray-600 ml-1 uppercase">({skill.stat})</span>
-                                                            {skill.key === 'sigilo' && isStealthDisadvantaged && <span className="ml-2 text-red-500 font-bold" title="Desventaja por Armadura Equipada">⚠️</span>}
+                                                            {skill.key === 'sigilo' && isStealthDisadvantaged && <button type="button" onClick={(event) => { event.stopPropagation(); showAlert(`La armadura equipada ${stealthDisadvantageArmor.name} impone desventaja en Sigilo.`); }} className="ml-2 inline-flex max-w-full items-center rounded border border-red-800 bg-red-950/50 px-1.5 py-0.5 text-[10px] font-bold text-red-300 hover:border-red-400" aria-label={`Explicación de desventaja en Sigilo por ${stealthDisadvantageArmor.name}`}>⚠ Desventaja ({stealthDisadvantageArmor.name})</button>}
                                                         </span>
                                                     </div>
                                                     <span className={`font-mono font-bold text-sm transition-colors ${isExp ? 'text-fuchsia-400' : isProf ? 'text-purple-400' : 'text-gray-600'}`}>{formatMod(totalMod)}</span>
@@ -1575,23 +1980,22 @@
                                         <h2 className="text-lg font-fantasy font-bold text-purple-300 tracking-widest uppercase">Recursos</h2>
                                         <button onClick={() => setAddModal({isOpen: true, type: 'resource', data: {}})} className="text-[10px] font-fantasy uppercase tracking-wider bg-gray-800 border border-gray-600 hover:border-purple-500 hover:text-white px-2 py-1 rounded transition-colors shadow-md">+ Añadir</button>
                                     </div>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <div ref={resourceGridRef} className="resource-reorder-grid grid grid-cols-2 md:grid-cols-4 gap-4">
                                         {resources.map((res, idx) => (
-                                            <div key={res.id} className="flex flex-col items-center bg-gray-900/80 p-3 rounded-lg border border-gray-700 relative group shadow-inner">
+                                            <div key={res.id} ref={element => { if (element) resourceCardRefs.current.set(res.id, element); else resourceCardRefs.current.delete(res.id); }} data-resource-id={res.id} onPointerDown={event => handleResourcePointerDown(event, res.id)} onPointerMove={handleResourcePointerMove} onPointerUp={handleResourcePointerEnd} onPointerCancel={handleResourcePointerEnd} onContextMenu={event => { if (resourceDrag.id === res.id) event.preventDefault(); }} style={resourceDrag.id === res.id ? { '--resource-drag-x': `${resourceDrag.x}px`, '--resource-drag-y': `${resourceDrag.y}px`, '--resource-drag-left': `${resourceDrag.left}px`, '--resource-drag-top': `${resourceDrag.top}px`, '--resource-drag-width': `${resourceDrag.width}px`, '--resource-drag-height': `${resourceDrag.height}px` } : undefined} className={`resource-card flex flex-col items-center bg-gray-900/80 p-3 rounded-lg border border-gray-700 relative group shadow-inner ${resourceDrag.id === res.id ? 'is-dragging' : ''} ${resourcePressRef.current?.id === res.id && !resourceDrag.id ? 'is-drag-pending' : ''} ${resourceDrag.id && resourceDrag.targetId === res.id && resourceDrag.id !== res.id ? 'is-drop-target' : ''}`}>
                                                 <span className="text-gray-300 text-[10px] font-bold uppercase tracking-wider text-center h-6 overflow-hidden w-full px-2">{res.name}</span>
-                                                <div className="flex items-center space-x-2 mt-2">
-                                                    <button onClick={() => setResources(previous => previous.map((resource, resourceIndex) => resourceIndex === idx ? { ...resource, current: Math.max(0, resource.current - 1) } : resource))} className="w-6 h-6 bg-gray-800 border border-gray-600 rounded flex items-center justify-center text-gray-400 hover:text-white hover:border-gray-400 transition-colors">-</button>
-                                                    <div className="flex flex-col items-center">
-                                                        <span className="text-xl font-bold text-white font-sans">{res.current}</span>
-                                                        {res.max > 0 && <span className="text-gray-600 text-[10px] font-sans">/ {res.max}</span>}
-                                                    </div>
-                                                    <button onClick={() => setResources(previous => previous.map((resource, resourceIndex) => resourceIndex === idx ? { ...resource, current: resource.max > 0 ? Math.min(resource.max, resource.current + 1) : resource.current + 1 } : resource))} className="w-6 h-6 bg-gray-800 border border-gray-600 rounded flex items-center justify-center text-gray-400 hover:text-white hover:border-gray-400 transition-colors">+</button>
+                                                <div className="min-h-5 mt-1">{renderUsageDots(res.current, res.max, 'text-purple-400')}</div>
+                                                <div className="mt-2 grid h-8 grid-cols-[2rem_3.25rem_2rem] items-center justify-center gap-1">
+                                                    <button onClick={() => setResources(previous => previous.map((resource, resourceIndex) => resourceIndex === idx ? { ...resource, current: Math.max(0, Number(resource.current) - 1) } : resource))} className="w-8 h-8 bg-gray-800 border border-gray-600 rounded flex items-center justify-center text-gray-300 hover:text-white hover:border-gray-400 transition-colors">−</button>
+                                                    <div className="grid h-8 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center text-base font-bold leading-none text-white font-sans"><input aria-label={`${res.name} actuales`} type="number" min="0" value={res.current} onChange={event => setResources(previous => previous.map((resource, resourceIndex) => resourceIndex === idx ? { ...resource, current: Number(resource.max) > 0 ? Math.max(0, Math.min(Number(resource.max), Number(event.target.value) || 0)) : Math.max(0, Number(event.target.value) || 0) } : resource))} className="h-8 w-full bg-transparent text-center text-lg leading-8 outline-none" />{Number(res.max) > 0 && <><span className="flex h-8 items-center justify-center px-0.5 text-gray-500">/</span><span className="flex h-8 items-center justify-center text-lg text-gray-400">{res.max}</span></>}</div>
+                                                    <button onClick={() => setResources(previous => previous.map((resource, resourceIndex) => resourceIndex === idx ? { ...resource, current: Number(resource.max) > 0 ? Math.min(Number(resource.max), (Number(resource.current) || 0) + 1) : (Number(resource.current) || 0) + 1 } : resource))} className="w-8 h-8 bg-gray-800 border border-gray-600 rounded flex items-center justify-center text-gray-300 hover:text-white hover:border-gray-400 transition-colors">+</button>
                                                 </div>
                                                 {res.type && <span className="text-fuchsia-500 text-[10px] mt-1 font-bold font-sans">{res.type}</span>}
                                                 <button onClick={() => confirmDelete(`¿Borrar el recurso "${res.name}"?`, () => setResources(resources.filter(r => r.id !== res.id)))} className="absolute -top-2 -right-2 bg-red-900 border border-red-500 text-red-200 hover:bg-red-600 hover:text-white w-5 h-5 rounded-full text-xs opacity-0 group-hover:opacity-100 flex items-center justify-center shadow-lg transition-all">×</button>
                                             </div>
                                         ))}
-                                        {resources.length === 0 && <p className="col-span-full text-sm text-gray-500">No hay recursos añadidos todavía. Pulsa + Añadir para crear el primero.</p>}
+                                        {grimoireConfig.usePactMagic && Number(grimoireConfig.pactSlots.max) > 0 && <div className="flex flex-col items-center bg-yellow-950/20 p-3 rounded-lg border border-yellow-800/70 shadow-inner"><span className="text-yellow-100 text-[10px] font-bold uppercase tracking-wider text-center">Magia de pacto (N{grimoireConfig.pactSlots.level})</span><div className="min-h-5 mt-1">{renderUsageDots(grimoireConfig.pactSlots.current, grimoireConfig.pactSlots.max, 'text-yellow-300')}</div><div className="mt-2 grid h-8 grid-cols-[2rem_3.25rem_2rem] items-center justify-center gap-1"><button type="button" onClick={() => setGrimoireConfig(previous => ({ ...previous, pactSlots: { ...previous.pactSlots, current: Math.max(0, Number(previous.pactSlots.current) - 1) } }))} className="w-8 h-8 bg-gray-900 border border-yellow-700 rounded text-yellow-100">−</button><span className="grid h-8 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center text-base font-bold leading-none text-yellow-100"><input aria-label="Ranuras de magia de pacto actuales" type="number" min="0" value={grimoireConfig.pactSlots.current} onChange={event => setGrimoireConfig(previous => ({ ...previous, pactSlots: { ...previous.pactSlots, current: Math.max(0, Math.min(Number(previous.pactSlots.max), Number(event.target.value) || 0)) } }))} className="h-8 w-full bg-transparent text-center text-lg leading-8 outline-none"/><span className="flex h-8 items-center justify-center px-0.5 text-yellow-500">/</span><span className="flex h-8 items-center justify-center text-lg text-yellow-200">{grimoireConfig.pactSlots.max}</span></span><button type="button" onClick={() => setGrimoireConfig(previous => ({ ...previous, pactSlots: { ...previous.pactSlots, current: Math.min(Number(previous.pactSlots.max), Number(previous.pactSlots.current) + 1) } }))} className="w-8 h-8 bg-gray-900 border border-yellow-700 rounded text-yellow-100">+</button></div></div>}
+                                        {resources.length === 0 && !(grimoireConfig.usePactMagic && Number(grimoireConfig.pactSlots.max) > 0) && <p className="col-span-full text-sm text-gray-500">No hay recursos añadidos todavía. Pulsa + Añadir para crear el primero.</p>}
                                     </div>
                                 </div>
 
@@ -1644,7 +2048,7 @@
                                 {/* ARMADURAS, COMPETENCIAS Y HERRAMIENTAS */}
                                 <div data-tab="inventory" className="tab-section rpg-panel p-4">
                                     <div className="flex justify-between items-center mb-4 rpg-panel-header pb-2 px-2">
-                                        <h2 className="text-lg font-fantasy font-bold text-purple-300 tracking-widest uppercase">Equipo Activo</h2>
+                                        <h2 className="text-lg font-fantasy font-bold text-purple-300 tracking-widest uppercase">Equipo en Uso</h2>
                                         <div className="flex gap-2">
                                             <button onClick={() => setAddModal({isOpen: true, type: 'armor', data: {type: 'light'}})} className="text-[10px] font-fantasy uppercase tracking-wider bg-gray-800 border border-gray-600 hover:border-purple-500 hover:text-white px-2 py-1 rounded transition-colors shadow-md">+ Armadura</button>
                                             <button onClick={() => setAddModal({isOpen: true, type: 'tool', data: {}})} className="text-[10px] font-fantasy uppercase tracking-wider bg-gray-800 border border-gray-600 hover:border-purple-500 hover:text-white px-2 py-1 rounded transition-colors shadow-md">+ Utilidad</button>
@@ -1653,23 +2057,24 @@
                                     {/* Lista de Armaduras y Escudos */}
                                     <div className="space-y-2 mb-6">
                                         {armors.map(arm => (
-                                            <div key={arm.id} className={`flex justify-between items-center bg-gray-900/40 p-2 rounded group border transition-colors ${arm.equipped ? 'border-purple-500/50 bg-purple-900/10 shadow-[inset_0_0_10px_rgba(168,85,247,0.1)]' : 'border-gray-800 hover:border-gray-600'}`}>
-                                                <div className="flex items-center gap-3 flex-1">
+                                            <div key={arm.id} className={`flex flex-wrap justify-between items-center gap-2 bg-gray-900/40 p-3 rounded group border transition-colors ${arm.equipped ? 'border-purple-500/50 bg-purple-900/10 shadow-[inset_0_0_10px_rgba(168,85,247,0.1)]' : 'border-gray-800 hover:border-gray-600'}`}>
+                                                <div className="flex min-w-0 items-center gap-3 flex-1">
                                                     <div className="relative flex items-center justify-center cursor-pointer" onClick={() => toggleArmorEquip(arm.id)}>
                                                         <div className={`w-5 h-5 rounded border ${arm.equipped ? 'bg-purple-600 border-purple-400' : 'bg-gray-800 border-gray-600'} flex items-center justify-center transition-colors shadow-sm`}>
                                                             {arm.equipped && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>}
                                                         </div>
                                                     </div>
-                                                    <div className="flex flex-col">
+                                                    <div className="flex min-w-0 flex-col">
                                                         <span className={`text-sm font-bold ${arm.equipped ? 'text-purple-200' : 'text-gray-300'}`}>{arm.name}</span>
-                                                        <div className="flex items-center gap-2 mt-0.5">
+                                                        <div className="flex flex-wrap items-center gap-2 mt-0.5">
                                                             <span className="text-[10px] text-gray-500 uppercase tracking-wider font-fantasy">{arm.type === 'light' ? 'Ligera' : arm.type === 'medium' ? 'Media' : arm.type === 'heavy' ? 'Pesada' : 'Escudo'}</span>
                                                             {arm.stealthDis && <span className="text-[9px] bg-red-950 text-red-400 px-1.5 py-0.5 rounded border border-red-900 font-bold tracking-wider">⚠ Desv. Sigilo</span>}
                                                         </div>
+                                                        <span className="mt-1 text-[11px] text-gray-400">CA: {getArmorFormula(arm)}</span>
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-3">
-                                                    <span className="text-xs font-mono font-bold text-gray-300 bg-gray-800 border border-gray-700 px-2 py-1 rounded shadow-inner">CA {arm.ac}</span>
+                                                    <span className="text-xs font-mono font-bold text-gray-300 bg-gray-800 border border-gray-700 px-2 py-1 rounded shadow-inner">{arm.type === 'shield' ? `+${arm.ac || 2}` : `CA ${arm.ac}`}</span>
                                                     <button onClick={() => confirmDelete(`¿Borrar "${arm.name}"?`, () => setArmors(armors.filter(a => a.id !== arm.id)))} className="text-gray-600 hover:text-red-500 font-bold text-lg leading-none opacity-0 group-hover:opacity-100 transition-opacity">×</button>
                                                 </div>
                                             </div>
@@ -1851,16 +2256,16 @@
 
                         <nav className="bottom-nav fixed bottom-0 left-0 right-0 z-40 grid grid-cols-4 gap-1 border-t border-gray-700 bg-gray-950/95 p-1 backdrop-blur-md" aria-label="Navegacion principal">
                             <button type="button" onClick={() => requestTabChange('character')} className={`bottom-nav-button flex flex-col items-center justify-center gap-1 rounded-md text-[10px] font-fantasy uppercase tracking-wider transition-colors ${activeTab === 'character' ? 'bg-purple-950/70 text-purple-300 shadow-inner' : 'text-gray-500 hover:bg-gray-800 hover:text-gray-200'}`} aria-current={activeTab === 'character' ? 'page' : undefined}>
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4 3.4-6 8-6s7.2 2 8 6"/></svg><span>Personaje</span>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4 3.4-6 8-6s7.2 2 8 6"/></svg><span>{t('character')}</span>
                             </button>
                             <button type="button" onClick={() => requestTabChange('combat')} className={`bottom-nav-button flex flex-col items-center justify-center gap-1 rounded-md text-[10px] font-fantasy uppercase tracking-wider transition-colors ${activeTab === 'combat' ? 'bg-red-950/70 text-red-300 shadow-inner' : 'text-gray-500 hover:bg-gray-800 hover:text-gray-200'}`} aria-current={activeTab === 'combat' ? 'page' : undefined}>
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m14.5 4.5 5 5-9 9H5.5v-5l9-9Z"/><path d="m13 6 5 5"/><path d="m4 20 3-3"/></svg><span>Combate</span>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m14.5 4.5 5 5-9 9H5.5v-5l9-9Z"/><path d="m13 6 5 5"/><path d="m4 20 3-3"/></svg><span>{t('combat')}</span>
                             </button>
                             <button type="button" onClick={() => requestTabChange('grimoire')} className={`bottom-nav-button flex flex-col items-center justify-center gap-1 rounded-md text-[10px] font-fantasy uppercase tracking-wider transition-colors ${activeTab === 'grimoire' ? 'bg-fuchsia-950/70 text-fuchsia-300 shadow-inner' : 'text-gray-500 hover:bg-gray-800 hover:text-gray-200'}`} aria-current={activeTab === 'grimoire' ? 'page' : undefined}>
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M5 4.5A3.5 3.5 0 0 1 8.5 2H19v17H8.5A3.5 3.5 0 0 0 5 22Z"/><path d="M5 4.5V22M9 7h6M9 11h6"/></svg><span>Grimorio</span>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M5 4.5A3.5 3.5 0 0 1 8.5 2H19v17H8.5A3.5 3.5 0 0 0 5 22Z"/><path d="M5 4.5V22M9 7h6M9 11h6"/></svg><span>{t('spellbook')}</span>
                             </button>
                             <button type="button" onClick={() => requestTabChange('inventory')} className={`bottom-nav-button flex flex-col items-center justify-center gap-1 rounded-md text-[10px] font-fantasy uppercase tracking-wider transition-colors ${activeTab === 'inventory' ? 'bg-amber-950/70 text-amber-300 shadow-inner' : 'text-gray-500 hover:bg-gray-800 hover:text-gray-200'}`} aria-current={activeTab === 'inventory' ? 'page' : undefined}>
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M5 8h14l-1 13H6L5 8Z"/><path d="M8 8V6a4 4 0 0 1 8 0v2"/></svg><span>Inventario/Lore</span>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M5 8h14l-1 13H6L5 8Z"/><path d="M8 8V6a4 4 0 0 1 8 0v2"/></svg><span>{t('inventory')}</span>
                             </button>
                         </nav>
 
@@ -1869,8 +2274,80 @@
                         {restModalOpen && (
                             <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4" onClick={() => setRestModalOpen(false)}><div className="rpg-panel max-w-lg w-full max-h-[85vh] overflow-y-auto p-5 border border-cyan-600" onClick={e => e.stopPropagation()}>
                                 <h3 className="text-xl font-fantasy text-cyan-200">Descansar</h3>
-                                {!restType ? <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5"><button onClick={() => setRestType('short')} className="min-h-20 p-4 rounded border border-cyan-700 text-left hover:bg-cyan-950/30"><b>Descanso corto</b><span className="block text-xs text-gray-400 mt-1">Recursos cortos y Magia de pacto.</span></button><button onClick={() => setRestType('long')} className="min-h-20 p-4 rounded border border-purple-700 text-left hover:bg-purple-950/30"><b>Descanso largo</b><span className="block text-xs text-gray-400 mt-1">Vida, ranuras y recursos.</span></button></div> : <div className="mt-4 space-y-4">{restType === 'short' && <div className="p-3 rounded bg-gray-900 border border-gray-700"><p className="text-sm">Dados disponibles: <b>{hitDice.current}{hitDice.type}</b> · Constitución: {formatMod(getModNum(stats.con))}</p><div className="flex items-center gap-3 mt-3"><span>Dados gastados</span><button onClick={() => setRestSpentDice(value => Math.max(0, Number(value)-1))}>−</button><b>{restSpentDice}</b><button disabled={(Number(hp.current)||0) >= (Number(hp.max)||0)} onClick={() => setRestSpentDice(value => Math.min(Number(hitDice.current)||0, Number(value)+1))}>+</button></div><label className="block mt-3 text-sm">Puntos de golpe recuperados<input disabled={!restSpentDice} min="0" type="number" value={restHealing} onChange={e => setRestHealing(Math.max(0, Number(e.target.value)||0))} className="ml-2 w-20 bg-gray-950 border border-gray-700 rounded p-1"/></label></div>}<div className="p-3 rounded border border-gray-700"><b>Vista previa</b>{restPreview.changes.length ? <ul className="mt-2 text-sm space-y-1">{restPreview.changes.map((change,index)=><li key={index}>{change}</li>)}</ul> : <p className="text-sm text-gray-500 mt-2">No hay cambios calculables.</p>}<p className="text-xs text-gray-500 mt-3">Sin cambios: {restPreview.unchanged.join(', ') || 'ninguno'}</p></div><div className="flex justify-end gap-3"><button onClick={() => setRestType(null)}>Volver</button><button onClick={confirmRest} className="px-4 py-2 rounded bg-cyan-700 text-white">Confirmar descanso</button></div></div>}
+                                {!restType ? <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5"><button onClick={() => setRestType('short')} className="min-h-20 p-4 rounded border border-cyan-700 text-left hover:bg-cyan-950/30"><b>Descanso corto</b><span className="block text-xs text-gray-400 mt-1">Recursos cortos y Magia de pacto.</span></button><button onClick={() => setRestType('long')} className="min-h-20 p-4 rounded border border-purple-700 text-left hover:bg-purple-950/30"><b>Descanso largo</b><span className="block text-xs text-gray-400 mt-1">Vida, ranuras y recursos.</span></button></div> : <div className="mt-4 space-y-4">{restType === 'short' && <div className="p-3 rounded bg-gray-900 border border-gray-700"><p className="text-sm">Dados disponibles: <b>{hitDice.current}{hitDice.type}</b> · Constitución: {formatMod(getModNum(getEffectiveStat('con')))}</p><div className="flex items-center gap-3 mt-3"><span>Dados gastados</span><button onClick={() => setRestSpentDice(value => Math.max(0, Number(value)-1))}>−</button><b>{restSpentDice}</b><button disabled={(Number(hp.current)||0) >= (Number(hp.max)||0)} onClick={() => setRestSpentDice(value => Math.min(Number(hitDice.current)||0, Number(value)+1))}>+</button></div><label className="block mt-3 text-sm">Puntos de golpe recuperados<input disabled={!restSpentDice} min="0" type="number" value={restHealing} onChange={e => setRestHealing(Math.max(0, Number(e.target.value)||0))} className="ml-2 w-20 bg-gray-950 border border-gray-700 rounded p-1"/></label></div>}<div className="p-3 rounded border border-gray-700"><b>Vista previa</b>{restPreview.changes.length ? <ul className="mt-2 text-sm space-y-1">{restPreview.changes.map((change,index)=><li key={index}>{change}</li>)}</ul> : <p className="text-sm text-gray-500 mt-2">No hay cambios calculables.</p>}<p className="text-xs text-gray-500 mt-3">Sin cambios: {restPreview.unchanged.join(', ') || 'ninguno'}</p></div><div className="flex justify-end gap-3"><button onClick={() => setRestType(null)}>Volver</button><button onClick={confirmRest} className="px-4 py-2 rounded bg-cyan-700 text-white">Confirmar descanso</button></div></div>}
                             </div></div>
+                        )}
+
+                        {appSettingsOpen && (
+                            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md p-4" onClick={() => setAppSettingsOpen(false)}>
+                                <div className="rpg-panel w-full max-w-lg max-h-[85vh] overflow-y-auto p-5" onClick={event => event.stopPropagation()}>
+                                    <div className="flex items-center justify-between gap-4 border-b border-gray-700 pb-3">
+                                        <h3 className="text-xl font-fantasy font-bold text-purple-200 tracking-widest uppercase">⚙ {t('settings')}</h3>
+                                        <button type="button" onClick={() => setAppSettingsOpen(false)} className="w-10 h-10 rounded border border-gray-600 text-gray-300 hover:bg-gray-800 text-2xl leading-none" aria-label={t('close')}>&times;</button>
+                                    </div>
+                                    <div className="mt-5 space-y-5">
+                                        <section>
+                                            <h4 className="font-fantasy text-sm font-bold uppercase tracking-wider text-gray-300 mb-2">{t('theme')}</h4>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                {['classic', 'parchment', 'arcane', 'contrast'].map(theme => <button key={theme} type="button" onClick={() => setAppSettings(previous => ({ ...previous, theme }))} aria-pressed={appSettings.theme === theme} className={`min-h-11 rounded border px-3 py-2 text-left text-sm transition-colors ${appSettings.theme === theme ? 'border-purple-400 bg-purple-900/40 text-white' : 'border-gray-700 bg-gray-900/60 text-gray-300 hover:border-gray-500'}`}>{t(theme)}</button>)}
+                                            </div>
+                                        </section>
+                                        <section>
+                                            <h4 className="font-fantasy text-sm font-bold uppercase tracking-wider text-gray-300 mb-2">{t('language')}</h4>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {[['es', 'Español'], ['en', 'English']].map(([language, label]) => <button key={language} type="button" onClick={() => setAppSettings(previous => ({ ...previous, language }))} aria-pressed={appSettings.language === language} className={`min-h-11 rounded border px-3 py-2 text-sm transition-colors ${appSettings.language === language ? 'border-purple-400 bg-purple-900/40 text-white' : 'border-gray-700 bg-gray-900/60 text-gray-300 hover:border-gray-500'}`}>{label}</button>)}
+                                            </div>
+                                        </section>
+                                        <section>
+                                            <h4 className="font-fantasy text-sm font-bold uppercase tracking-wider text-gray-300 mb-2">{t('textSize')}</h4>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                {['small', 'normal', 'large'].map(size => <button key={size} type="button" onClick={() => setAppSettings(previous => ({ ...previous, textSize: size }))} aria-pressed={appSettings.textSize === size} className={`min-h-11 rounded border px-2 py-2 text-sm transition-colors ${appSettings.textSize === size ? 'border-purple-400 bg-purple-900/40 text-white' : 'border-gray-700 bg-gray-900/60 text-gray-300 hover:border-gray-500'}`}>{t(size)}</button>)}
+                                            </div>
+                                        </section>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activityHistoryOpen && (
+                            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md p-4" onClick={() => setActivityHistoryOpen(false)}>
+                                <div className="rpg-panel w-full max-w-2xl max-h-[85vh] flex flex-col p-5" onClick={event => event.stopPropagation()}>
+                                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-700 pb-3">
+                                        <h3 className="text-xl font-fantasy font-bold text-purple-200 tracking-widest uppercase">Historial</h3>
+                                        <div className="flex items-center gap-2"><button type="button" disabled={!activityLog.length} onClick={() => confirmDelete('¿Limpiar todo el historial de este personaje?', () => setActivityLog([]))} className="min-h-9 px-3 rounded border border-red-800 text-xs text-red-200 hover:bg-red-950 disabled:border-gray-700 disabled:text-gray-600 disabled:cursor-not-allowed">Limpiar</button><button type="button" onClick={() => setActivityHistoryOpen(false)} className="w-10 h-10 rounded border border-gray-600 text-gray-300 text-2xl leading-none" aria-label="Cerrar historial">&times;</button></div>
+                                    </div>
+                                    {activityLog.length ? <div className="mt-4 flex-1 overflow-y-auto pr-1 space-y-2">{activityLog.map(entry => <div key={entry.id} className="flex gap-3 rounded border border-gray-800 bg-gray-900/50 px-3 py-2"><time dateTime={entry.timestamp} className="shrink-0 text-xs text-purple-300">{new Date(entry.timestamp).toLocaleDateString('es-ES')} {new Date(entry.timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</time><span className="text-sm text-gray-200">{entry.description}</span></div>)}</div> : <p className="mt-4 text-sm text-gray-500">Aún no hay cambios importantes registrados.</p>}
+                                </div>
+                            </div>
+                        )}
+
+                        {portraitViewerOpen && isValidPortraitDataUrl(activeCharacter.meta.portrait) && (
+                            <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/85 backdrop-blur-sm p-4" onClick={() => setPortraitViewerOpen(false)}>
+                                <div className="relative flex max-h-[85vh] max-w-3xl items-center justify-center" onClick={event => event.stopPropagation()}>
+                                    <img src={activeCharacter.meta.portrait} alt={`Retrato ampliado de ${charInfo.name || 'personaje'}`} className="max-h-[80vh] max-w-full rounded-lg border border-purple-400/70 bg-gray-950 object-contain shadow-2xl" />
+                                    <button type="button" onClick={() => setPortraitViewerOpen(false)} className="absolute right-2 top-2 flex h-10 w-10 items-center justify-center rounded border border-gray-500 bg-gray-950/90 text-2xl leading-none text-gray-100 hover:border-purple-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-purple-300" aria-label="Cerrar visor de retrato">&times;</button>
+                                </div>
+                            </div>
+                        )}
+
+                        {timerModal.isOpen && (
+                            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md p-4" onClick={() => setTimerModal({ isOpen: false, id: null, data: { name: '', current: '1', max: '', type: 'turns' } })}>
+                                <div className="rpg-panel w-full max-w-md p-5" onClick={event => event.stopPropagation()}>
+                                    <div className="flex items-center justify-between gap-4 border-b border-gray-700 pb-3">
+                                        <h3 className="text-xl font-fantasy font-bold text-cyan-200">{timerModal.id ? 'Editar temporizador' : 'Nuevo temporizador'}</h3>
+                                        <button type="button" onClick={() => setTimerModal({ isOpen: false, id: null, data: { name: '', current: '1', max: '', type: 'turns' } })} className="w-10 h-10 rounded border border-gray-600 text-gray-300 text-2xl leading-none">&times;</button>
+                                    </div>
+                                    <div className="mt-4 space-y-4">
+                                        <label className="block text-sm text-gray-300">Nombre<input autoFocus type="text" placeholder="Ej: Escudo de la Fe" value={timerModal.data.name} onChange={event => setTimerModal(previous => ({ ...previous, data: { ...previous.data, name: event.target.value } }))} className="mt-1 w-full rounded border border-gray-700 bg-gray-950 p-2.5 text-white outline-none focus:border-cyan-400"/></label>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <label className="block text-sm text-gray-300">Actual<input type="number" min="0" value={timerModal.data.current} onChange={event => setTimerModal(previous => ({ ...previous, data: { ...previous.data, current: handleNumInput(event.target.value) } }))} className="mt-1 w-full rounded border border-gray-700 bg-gray-950 p-2.5 text-center text-white outline-none focus:border-cyan-400"/></label>
+                                            <label className="block text-sm text-gray-300">Máximo opcional<input type="number" min="0" placeholder="Ej: 10" value={timerModal.data.max} onChange={event => setTimerModal(previous => ({ ...previous, data: { ...previous.data, max: handleNumInput(event.target.value) } }))} className="mt-1 w-full rounded border border-gray-700 bg-gray-950 p-2.5 text-center text-white outline-none focus:border-cyan-400"/></label>
+                                        </div>
+                                        <label className="block text-sm text-gray-300">Tipo<select value={timerModal.data.type} onChange={event => setTimerModal(previous => ({ ...previous, data: { ...previous.data, type: event.target.value } }))} className="mt-1 w-full rounded border border-gray-700 bg-gray-950 p-2.5 text-white outline-none focus:border-cyan-400"><option value="turns">Turnos</option><option value="rounds">Rondas</option><option value="minutes">Minutos</option><option value="hours">Horas</option><option value="days">Días</option></select>{REAL_TIMER_UNITS[timerModal.data.type] && <span className="mt-1 block text-xs text-cyan-300">Este temporizador avanza con el tiempo real.</span>}</label>
+                                    </div>
+                                    <div className="mt-5 flex justify-end gap-3"><button type="button" onClick={() => setTimerModal({ isOpen: false, id: null, data: { name: '', current: '1', max: '', type: 'turns' } })} className="min-h-10 px-4 rounded border border-gray-600 text-gray-300">Cancelar</button><button type="button" onClick={saveTimer} className="min-h-10 px-4 rounded border border-cyan-500 bg-cyan-700 text-white">Guardar</button></div>
+                                </div>
+                            </div>
                         )}
 
                         {characterManagerOpen && (
@@ -2056,6 +2533,7 @@
                                                         <option value="shield">Escudo</option>
                                                     </select>
                                                 </div>
+                                                <div className="rounded border border-purple-900/70 bg-purple-950/20 px-3 py-2 text-xs text-purple-200">Cálculo de CA: <b>{getArmorFormula({ type: addModal.data.type || 'light', ac: addModal.data.ac })}</b></div>
                                                 <div>
                                                     <label className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1.5 block font-fantasy">Clase de Armadura (CA) que otorga</label>
                                                     <input type="number" placeholder="Ej: 11" value={addModal.data.ac || ''} onChange={e => setAddModal({...addModal, data: {...addModal.data, ac: handleNumInput(e.target.value)}})} className="w-full bg-gray-950 border border-gray-700 rounded p-2.5 text-white focus:border-purple-500 outline-none" />
